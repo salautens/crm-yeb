@@ -2,6 +2,8 @@ import { Button, SearchField, Select, ListBox } from '@heroui/react'
 import {
   ArrowRightStartOnRectangleIcon,
   Bars3Icon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/react/24/outline'
 
 const filterOptions = [
@@ -12,9 +14,11 @@ const filterOptions = [
 
 interface TopbarProps {
   onToggleSidebar: () => void
+  theme: 'light' | 'dark'
+  onToggleTheme: () => void
 }
 
-export default function Topbar({ onToggleSidebar }: TopbarProps) {
+export default function Topbar({ onToggleSidebar, theme, onToggleTheme }: TopbarProps) {
   return (
     <header
       style={{
@@ -28,7 +32,7 @@ export default function Topbar({ onToggleSidebar }: TopbarProps) {
       <button
         onClick={onToggleSidebar}
         style={{ color: 'var(--color-text-muted)', borderRadius: 'var(--radius-md)' }}
-        className="p-1.5 hover:bg-slate-100"
+        className="p-1.5 hover:opacity-70"
       >
         <Bars3Icon className="w-5 h-5" />
       </button>
@@ -92,6 +96,28 @@ export default function Topbar({ onToggleSidebar }: TopbarProps) {
           </SearchField.Group>
         </SearchField>
       </div>
+
+      {/* Theme toggle */}
+      <button
+        onClick={onToggleTheme}
+        style={{
+          color: 'var(--color-text-muted)',
+          borderRadius: 'var(--radius-md)',
+          padding: '6px',
+          background: 'transparent',
+          border: '1px solid var(--color-border)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+        title={theme === 'dark' ? 'Mudar para Light' : 'Mudar para Dark'}
+      >
+        {theme === 'dark' ? (
+          <SunIcon className="w-4 h-4" />
+        ) : (
+          <MoonIcon className="w-4 h-4" />
+        )}
+      </button>
 
       {/* Logout */}
       <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-secondary)' }}>
