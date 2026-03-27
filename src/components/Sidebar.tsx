@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   ChartBarIcon,
   GlobeAltIcon,
-  Squares2X2Icon,
 } from '@heroicons/react/24/outline'
 
 const navItems = [
@@ -23,34 +22,57 @@ const navItems = [
 export default function Sidebar({ collapsed }: { collapsed: boolean }) {
   return (
     <aside
-      className={`flex flex-col h-full bg-white border-r border-gray-200 transition-all duration-300 ${
-        collapsed ? 'w-16' : 'w-56'
-      }`}
+      style={{
+        width: collapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-expanded)',
+        borderRight: '1px solid var(--color-border)',
+        background: 'var(--color-bg-white)',
+        transition: 'width 0.3s ease',
+      }}
+      className="flex flex-col h-full shrink-0"
     >
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-100">
-        {!collapsed && (
-          <span className="text-2xl font-bold text-[#2B2D6E]">Yeb</span>
-        )}
-        {collapsed && (
-          <Squares2X2Icon className="w-6 h-6 text-[#2B2D6E] mx-auto" />
+      <div
+        style={{
+          height: 'var(--header-height)',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+        className="flex items-center px-4"
+      >
+        {collapsed ? (
+          <span
+            style={{ color: 'var(--color-brand-dark)', fontWeight: 700, fontSize: 20 }}
+            className="mx-auto"
+          >
+            Y
+          </span>
+        ) : (
+          <span style={{ color: 'var(--color-brand-dark)', fontWeight: 700, fontSize: 22 }}>
+            Yeb
+          </span>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-3">
         {navItems.map(({ label, icon: Icon, to }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-gray-100 text-[#2B2D6E] border-r-2 border-[#2B2D6E]'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-[#2B2D6E]'
-              }`
-            }
+            style={({ isActive }) => ({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: collapsed ? '10px 0' : '10px 16px',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              fontSize: 14,
+              fontWeight: 500,
+              textDecoration: 'none',
+              position: 'relative',
+              color: isActive ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
+              background: isActive ? 'rgba(29,78,216,0.07)' : 'transparent',
+              borderRight: isActive ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
+            })}
           >
             <Icon className="w-5 h-5 shrink-0" />
             {!collapsed && <span>{label}</span>}

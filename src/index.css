@@ -1,13 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 * {
   box-sizing: border-box;
+  transition: var(--transition-base);
+}
+
+/* Reset transitions para elementos que não precisam */
+*, *::before, *::after {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #f9f9fb;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
