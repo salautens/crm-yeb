@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Unrelated project files
+src/skills/
+docs/
+samples/
+tools/
+website/
