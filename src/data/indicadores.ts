@@ -1,0 +1,90 @@
+// Mock de dados para os dashboards de Indicadores
+
+export const indicadoresComunicacao = {
+  qualificacaoBD: 0.89,
+  qualificacoesDiarias: 0,
+  totalLeadsPorCanal: { email: 0, telefone: 2, visita: 3, indicacao: 1 },
+  leadsParaReuniao: 5,
+  tempoMedioReuniao: 12,
+  leadsParaFechamento: 2,
+  tempoMedioFechamento: 45,
+  taxaConversao: 0,
+  evolucaoMensal: [
+    { mes: 'Jan', qualificacoes: 12 },
+    { mes: 'Fev', qualificacoes: 18 },
+    { mes: 'Mar', qualificacoes: 9 },
+    { mes: 'Abr', qualificacoes: 22 },
+    { mes: 'Mai', qualificacoes: 30 },
+    { mes: 'Jun', qualificacoes: 15 },
+  ],
+}
+
+export const indicadoresVendas = {
+  empresasAtivas: 143,
+  ticketMedioNovoCliente: 4800,
+  ticketMedioPorProduto: 3690,
+  taxaRealizacaoReunioes: 0.67,
+  novosPorMes: [
+    { mes: 'Jan/25', novos: 3 },
+    { mes: 'Fev/25', novos: 4 },
+    { mes: 'Mar/25', novos: 2 },
+    { mes: 'Abr/25', novos: 5 },
+    { mes: 'Mai/25', novos: 6 },
+    { mes: 'Jun/25', novos: 4 },
+    { mes: 'Jul/25', novos: 3 },
+    { mes: 'Ago/25', novos: 4 },
+    { mes: 'Set/25', novos: 5 },
+    { mes: 'Out/25', novos: 2 },
+  ],
+  porSegmento: [
+    { segmento: 'Usinas', total: 8 },
+    { segmento: 'Cooperativas', total: 12 },
+    { segmento: 'Fazendeiros', total: 35 },
+    { segmento: 'Distribuição e Revenda', total: 22 },
+    { segmento: 'Indústria', total: 9 },
+    { segmento: 'Outros', total: 57 },
+  ],
+  porColaborador: [
+    { nome: 'Laleska Silva', total: 42 },
+    { nome: 'Gaby', total: 38 },
+    { nome: 'Rafael Vendedor', total: 31 },
+    { nome: 'Lucas SDR', total: 22 },
+    { nome: 'Demais', total: 10 },
+  ],
+}
+
+export const indicadoresGestao = {
+  totalClientes: 75,
+  evolucaoMensal: [
+    { mes: 'Jan/25', clientes: 60 },
+    { mes: 'Fev/25', clientes: 63 },
+    { mes: 'Mar/25', clientes: 65 },
+    { mes: 'Abr/25', clientes: 68 },
+    { mes: 'Mai/25', clientes: 71 },
+    { mes: 'Jun/25', clientes: 72 },
+    { mes: 'Jul/25', clientes: 73 },
+    { mes: 'Ago/25', clientes: 74 },
+    { mes: 'Set/25', clientes: 74 },
+    { mes: 'Out/25', clientes: 75 },
+  ],
+  vencimentos: [
+    { clienteId: 3, empresa: 'Distribuidora Campo Verde', diasRestantes: 17, dataVencimento: '2026-04-14' },
+    { clienteId: 5, empresa: 'Agropecuária Cerrado', diasRestantes: 30, dataVencimento: '2026-04-27' },
+    { clienteId: 10, empresa: 'Usina Boa Esperança', diasRestantes: 59, dataVencimento: '2026-05-25' },
+    { clienteId: 1, empresa: 'Fazenda Santa Clara', diasRestantes: 339, dataVencimento: '2027-03-01' },
+    { clienteId: 4, empresa: 'Fazenda Santa Clara (Price)', diasRestantes: 3778, dataVencimento: '2036-07-31' },
+  ],
+  regularizacao: { regular: 68, pendente: 7 },
+  pontosContato: [
+    { mes: 'Jan/25', pontos: 120 },
+    { mes: 'Fev/25', pontos: 145 },
+    { mes: 'Mar/25', pontos: 132 },
+    { mes: 'Abr/25', pontos: 160 },
+    { mes: 'Mai/25', pontos: 178 },
+    { mes: 'Jun/25', pontos: 155 },
+    { mes: 'Jul/25', pontos: 143 },
+    { mes: 'Ago/25', pontos: 138 },
+    { mes: 'Set/25', pontos: 125 },
+    { mes: 'Out/25', pontos: 110 },
+  ],
+}
