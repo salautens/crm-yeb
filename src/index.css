@@ -27,3 +27,23 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+/* Form input focus ring */
+.yeb-input:focus {
+  border-color: var(--color-brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.10);
+  outline: none;
+}
+.yeb-input.autofilled {
+  background: rgba(29, 78, 216, 0.04) !important;
+  border-color: rgba(29, 78, 216, 0.3) !important;
+}
+.yeb-input.error {
+  border-color: var(--color-danger) !important;
+}
+
+/* Wide modal for empresa form */
+.empresa-modal-container {
+  max-width: 900px !important;
+  width: 95vw !important;
+}
