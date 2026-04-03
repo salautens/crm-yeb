@@ -11,5 +11,3 @@ export const contratos: Contrato[] = [
 export const getContratosByEmpresa = (empresaId: number) =>
   contratos.filter((c) => c.empresaId === empresaId)
 
-export const getContratosByStatus = (status: string) =>
-  contratos.filter((c) => c.status === status)

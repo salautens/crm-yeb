@@ -7,11 +7,14 @@ import {
   CalendarDaysIcon,
   ChartBarIcon,
   GlobeAltIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline'
 
 const navItems = [
   { label: 'Início', icon: HomeIcon, to: '/' },
   { label: 'Cadastro', icon: PlusIcon, to: '/cadastro' },
+  { label: 'Carteira', icon: BriefcaseIcon, to: '/carteira' },
+  { label: 'Agenda', icon: CalendarDaysIcon, to: '/agenda' },
   { label: 'Base de dados', icon: CircleStackIcon, to: '/base-dados' },
   { label: 'Pipeline', icon: Bars3Icon, to: '/pipeline' },
   { label: 'Eficiência', icon: CalendarDaysIcon, to: '/eficiencia' },
@@ -53,12 +56,13 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-3">
+      <nav aria-label="Menu principal" className="flex-1 py-3">
         {navItems.map(({ label, icon: Icon, to }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
+            aria-label={collapsed ? label : undefined}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
@@ -74,7 +78,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
               borderRight: isActive ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
             })}
           >
-            <Icon className="w-5 h-5 shrink-0" />
+            <Icon className="w-5 h-5 shrink-0" aria-hidden="true" />
             {!collapsed && <span>{label}</span>}
           </NavLink>
         ))}

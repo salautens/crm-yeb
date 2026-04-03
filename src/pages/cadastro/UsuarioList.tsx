@@ -92,7 +92,7 @@ export default function UsuarioList() {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
               {['Nome', 'E-mail', 'Cargo', 'Perfil', 'Status', ''].map((h) => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                <th key={h} scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -147,21 +147,21 @@ export default function UsuarioList() {
               <Modal.Body>
                 <div style={{ display: 'grid', gap: 14 }}>
                   <div>
-                    <label style={labelStyle}>Nome *</label>
-                    <input style={inputStyle} value={form.nome} onChange={(e) => setF('nome', e.target.value)} placeholder="Nome completo" />
+                    <label htmlFor="usuario-nome" style={labelStyle}>Nome <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
+                    <input id="usuario-nome" aria-required="true" style={inputStyle} value={form.nome} onChange={(e) => setF('nome', e.target.value)} placeholder="Nome completo" />
                   </div>
                   <div>
-                    <label style={labelStyle}>E-mail *</label>
-                    <input style={inputStyle} type="email" value={form.email} onChange={(e) => setF('email', e.target.value)} placeholder="email@empresa.com" />
+                    <label htmlFor="usuario-email" style={labelStyle}>E-mail <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
+                    <input id="usuario-email" aria-required="true" autoComplete="email" style={inputStyle} type="email" value={form.email} onChange={(e) => setF('email', e.target.value)} placeholder="email@empresa.com" />
                   </div>
                   <div>
-                    <label style={labelStyle}>Cargo</label>
-                    <input style={inputStyle} value={form.cargo} onChange={(e) => setF('cargo', e.target.value)} placeholder="Ex: Consultor Comercial" />
+                    <label htmlFor="usuario-cargo" style={labelStyle}>Cargo</label>
+                    <input id="usuario-cargo" style={inputStyle} value={form.cargo} onChange={(e) => setF('cargo', e.target.value)} placeholder="Ex: Consultor Comercial" />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
-                      <label style={labelStyle}>Perfil *</label>
-                      <select style={inputStyle} value={form.perfil} onChange={(e) => setF('perfil', e.target.value as UserRole)}>
+                      <label htmlFor="usuario-perfil" style={labelStyle}>Perfil <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
+                      <select id="usuario-perfil" aria-required="true" style={inputStyle} value={form.perfil} onChange={(e) => setF('perfil', e.target.value as UserRole)}>
                         {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                       </select>
                     </div>

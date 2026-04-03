@@ -85,7 +85,7 @@ export default function ProdutoList() {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
               {['Produto', 'Categoria', ''].map((h) => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                <th key={h} scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -129,12 +129,12 @@ export default function ProdutoList() {
               <Modal.Body>
                 <div style={{ display: 'grid', gap: 14 }}>
                   <div>
-                    <label style={labelStyle}>Nome *</label>
-                    <input style={inputStyle} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome do produto" />
+                    <label htmlFor="produto-nome" style={labelStyle}>Nome <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
+                    <input id="produto-nome" aria-required="true" style={inputStyle} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome do produto" />
                   </div>
                   <div>
-                    <label style={labelStyle}>Categoria *</label>
-                    <select style={inputStyle} value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}>
+                    <label htmlFor="produto-categoria" style={labelStyle}>Categoria <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
+                    <select id="produto-categoria" aria-required="true" style={inputStyle} value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}>
                       {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>

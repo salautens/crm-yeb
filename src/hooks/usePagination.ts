@@ -10,11 +10,5 @@ export function usePagination<T>(items: T[], pageSize = 10) {
     [items, page, pageSize]
   )
 
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1))
-  const goPrev = () => setPage((p) => Math.max(1, p - 1))
-
-  // Reset to page 1 when items change (e.g. after filter)
-  const reset = () => setPage(1)
-
-  return { page, setPage, totalPages, paginated, goNext, goPrev, reset }
+  return { page, setPage, totalPages, paginated }
 }

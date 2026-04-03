@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Dropdown } from '@heroui/react'
+import { EyeIcon, BookmarkSlashIcon } from '@heroicons/react/24/outline'
+import { Header } from 'react-aria-components'
 import { empresas, updateEmpresa } from '../data/empresas'
 import { segmentos } from '../data/segmentos'
 import { atividades } from '../data/atividades'
@@ -120,13 +122,28 @@ export default function Inicio() {
                             <Button variant="ghost" style={{ fontSize: 16 }}>⋯</Button>
                           </Dropdown.Trigger>
                           <Dropdown.Popover>
-                            <Dropdown.Menu>
-                              <Dropdown.Item onPress={() => navigate(`/cadastro/empresa/${empresa.id}`)}>
-                                Ver Detalhes
-                              </Dropdown.Item>
-                              <Dropdown.Item onPress={() => handleToggleFavorita(empresa.id, empresa.favorita)}>
-                                Remover dos Favoritos
-                              </Dropdown.Item>
+                            <Dropdown.Menu style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minWidth: 220, padding: 8 }}>
+                              <Dropdown.Section>
+                                <Header style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', padding: '4px 8px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ações</Header>
+                                <Dropdown.Item onPress={() => navigate(`/cadastro/empresa/${empresa.id}`)}>
+                                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    <EyeIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+                                    <div>
+                                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>Ver Detalhes</div>
+                                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Abrir cadastro completo</div>
+                                    </div>
+                                  </div>
+                                </Dropdown.Item>
+                                <Dropdown.Item onPress={() => handleToggleFavorita(empresa.id, empresa.favorita)}>
+                                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    <BookmarkSlashIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+                                    <div>
+                                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>Remover dos Favoritos</div>
+                                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Retirar da lista de favoritos</div>
+                                    </div>
+                                  </div>
+                                </Dropdown.Item>
+                              </Dropdown.Section>
                             </Dropdown.Menu>
                           </Dropdown.Popover>
                         </Dropdown>

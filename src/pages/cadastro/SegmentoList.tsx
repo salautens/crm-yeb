@@ -81,7 +81,7 @@ export default function SegmentoList() {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
               {['#', 'Nome do Segmento', ''].map((h) => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                <th key={h} scope="col" style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -122,8 +122,10 @@ export default function SegmentoList() {
                 <Modal.CloseTrigger />
               </Modal.Header>
               <Modal.Body>
-                <label style={labelStyle}>Nome *</label>
+                <label htmlFor="segmento-nome" style={labelStyle}>Nome <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
                 <input
+                  id="segmento-nome"
+                  aria-required="true"
                   style={inputStyle}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Modal, Dropdown, useOverlayState } from '@heroui/react'
+import { EyeIcon, PencilSquareIcon, FlagIcon, TrashIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
+import { Header } from 'react-aria-components'
 import { empresas as initialEmpresas, addEmpresa, updateEmpresa, deleteEmpresa } from '../../data/empresas'
 import { segmentos } from '../../data/segmentos'
 import { usuarios } from '../../data/usuarios'
@@ -46,9 +48,9 @@ const EMPTY_FORM = {
   tipo: 'matriz' as 'matriz' | 'filial',
   cnpj: '', cnpjMatriz: '',
   razaoSocial: '', nomeFantasia: '',
-  telefone: '', email: '',
   pais: 'Brasil', cep: '',
-  logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '',
+  logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', caixaPostal: '',
+  ddi: '+55', telefone: '', email: '', site: '',
   segmentoId: 1,
   pipeline: 'prospeccao' as PipelineStage,
   empresaAlvo: false,
@@ -64,19 +66,25 @@ const S: React.CSSProperties = {
 }
 
 // ─── Reusable Field wrapper ────────────────────────────────────────────────────
-function Field({ label, required, children, style }: { label: string; required?: boolean; children: React.ReactNode; style?: React.CSSProperties }) {
+function Field({ label, required, children, style, htmlFor }: { label: string; required?: boolean; children: React.ReactNode; style?: React.CSSProperties; htmlFor?: string }) {
   return (
     <div style={style}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
-        {label}{required && <span style={{ color: 'var(--color-danger)' }}>*</span>}
-      </div>
+      <label htmlFor={htmlFor} style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3, cursor: 'pointer' }}>
+        {label}
+        {required && (
+          <>
+            <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
+            <span className="sr-only">(obrigatório)</span>
+          </>
+        )}
+      </label>
       {children}
     </div>
   )
 }
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
-const STEPS = ['Identificação', 'Endereço', 'Dados Comerciais']
+const STEPS = ['Identificação', 'Endereço', 'Contato', 'Dados Comerciais']
 
 function StepBar({ current }: { current: number }) {
   return (
@@ -204,13 +212,13 @@ export default function EmpresaList() {
 
   const openEdit = (empresa: Empresa) => {
     setEditingId(empresa.id); setStep(0)
-    setForm({ tipo: empresa.tipo, cnpj: empresa.cnpj, cnpjMatriz: empresa.cnpjMatriz ?? '', razaoSocial: empresa.razaoSocial, nomeFantasia: empresa.nomeFantasia, telefone: empresa.telefone ?? '', email: empresa.email ?? '', pais: empresa.pais, cep: empresa.cep ?? '', logradouro: empresa.logradouro ?? '', numero: '', complemento: '', bairro: empresa.bairro ?? '', cidade: empresa.cidade ?? '', uf: empresa.uf ?? '', segmentoId: empresa.segmentoId, pipeline: empresa.pipeline, empresaAlvo: empresa.empresaAlvo, usuarioId: empresa.usuarioId })
+    setForm({ tipo: empresa.tipo, cnpj: empresa.cnpj, cnpjMatriz: empresa.cnpjMatriz ?? '', razaoSocial: empresa.razaoSocial, nomeFantasia: empresa.nomeFantasia, pais: empresa.pais, cep: empresa.cep ?? '', logradouro: empresa.logradouro ?? '', numero: '', complemento: '', bairro: empresa.bairro ?? '', cidade: empresa.cidade ?? '', uf: empresa.uf ?? '', caixaPostal: '', ddi: '+55', telefone: empresa.telefone ?? '', email: empresa.email ?? '', site: '', segmentoId: empresa.segmentoId, pipeline: empresa.pipeline, empresaAlvo: empresa.empresaAlvo, usuarioId: empresa.usuarioId })
     setCepTouched(false); setAutoFilled(false); modalState.open()
   }
 
   const handleSave = () => {
     const logradouroFull = [form.logradouro, form.numero].filter(Boolean).join(', ')
-    const payload = { tipo: form.tipo, cnpj: form.cnpj, cnpjMatriz: form.tipo === 'filial' ? form.cnpjMatriz : undefined, razaoSocial: form.razaoSocial, nomeFantasia: form.nomeFantasia, telefone: form.telefone || undefined, email: form.email || undefined, pais: form.pais, cep: form.cep || undefined, logradouro: logradouroFull || undefined, bairro: form.bairro || undefined, cidade: form.cidade || undefined, uf: form.uf || undefined, segmentoId: form.segmentoId, pipeline: form.pipeline, empresaAlvo: form.empresaAlvo, usuarioId: form.usuarioId }
+    const payload = { tipo: form.tipo, cnpj: form.cnpj, cnpjMatriz: form.tipo === 'filial' ? form.cnpjMatriz : undefined, razaoSocial: form.razaoSocial, nomeFantasia: form.nomeFantasia, pais: form.pais, cep: form.cep || undefined, logradouro: logradouroFull || undefined, bairro: form.bairro || undefined, cidade: form.cidade || undefined, uf: form.uf || undefined, ddi: form.ddi || undefined, telefone: form.telefone || undefined, email: form.email || undefined, site: form.site || undefined, segmentoId: form.segmentoId, pipeline: form.pipeline, empresaAlvo: form.empresaAlvo, usuarioId: form.usuarioId }
     if (editingId !== null) {
       updateEmpresa(editingId, payload)
     } else {
@@ -220,6 +228,7 @@ export default function EmpresaList() {
   }
 
   const handleToggleAlvo = (empresa: Empresa) => { updateEmpresa(empresa.id, { empresaAlvo: !empresa.empresaAlvo }); setData([...initialEmpresas]) }
+  const handleToggleCarteira = (empresa: Empresa) => { updateEmpresa(empresa.id, { favorita: !empresa.favorita }); setData([...initialEmpresas]) }
   const handleDelete = () => {
     if (!toDelete) return; setDeleting(true)
     setTimeout(() => { deleteEmpresa(toDelete.id); setData([...initialEmpresas]); setDeleting(false); deleteState.close(); setToDelete(null) }, 400)
@@ -233,6 +242,7 @@ export default function EmpresaList() {
   const isEditing = editingId !== null
   const canNext0 = !!form.razaoSocial && form.cnpj.replace(/\D/g, '').length === 14
   const canSave = canNext0
+  const lastStep = STEPS.length - 1
 
   return (
     <div>
@@ -244,7 +254,7 @@ export default function EmpresaList() {
 
       {/* Toolbar */}
       <div className="flex gap-3 mb-4" style={{ flexWrap: 'wrap' }}>
-        <input className="yeb-input" style={{ ...S, maxWidth: 280, padding: '7px 10px', fontSize: 13 }} placeholder="Buscar por nome ou CNPJ..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
+        <input aria-label="Buscar empresas" className="yeb-input" style={{ ...S, maxWidth: 280, padding: '7px 10px', fontSize: 13 }} placeholder="Buscar por nome ou CNPJ..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
         <select className="yeb-input" style={{ ...S, maxWidth: 180, padding: '7px 10px', fontSize: 13 }} value={filterSegmento} onChange={(e) => { setFilterSegmento(e.target.value); setPage(1) }}>
           <option value="">Todos os segmentos</option>
           {segmentos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
@@ -262,7 +272,7 @@ export default function EmpresaList() {
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
               {['CNPJ', 'Empresa', 'Segmento', 'Tipo', 'Pipeline', 'Alvo', ''].map((h) => (
-                <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                <th key={h} scope="col" style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -290,14 +300,65 @@ export default function EmpresaList() {
                     <td style={{ padding: '11px 16px' }}>
                       <Dropdown>
                         <Dropdown.Trigger>
-                          <Button variant="ghost" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>⋯</Button>
+                          <Button variant="ghost" aria-label="Abrir menu de opções" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>⋯</Button>
                         </Dropdown.Trigger>
                         <Dropdown.Popover>
-                          <Dropdown.Menu>
-                            <Dropdown.Item onPress={() => navigate(`/cadastro/empresa/${empresa.id}`)}>Ver Detalhes</Dropdown.Item>
-                            <Dropdown.Item onPress={() => openEdit(empresa)}>Editar</Dropdown.Item>
-                            <Dropdown.Item onPress={() => handleToggleAlvo(empresa)}>{empresa.empresaAlvo ? 'Remover como Alvo' : 'Tornar Empresa Alvo'}</Dropdown.Item>
-                            <Dropdown.Item onPress={() => { setToDelete(empresa); deleteState.open() }} style={{ color: 'var(--color-danger)' }}>Excluir</Dropdown.Item>
+                          <Dropdown.Menu style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minWidth: 220, padding: 8 }}>
+                            <Dropdown.Section>
+                              <Header style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', padding: '4px 8px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ações</Header>
+                              <Dropdown.Item onPress={() => navigate(`/cadastro/empresa/${empresa.id}`)}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <EyeIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>Ver Detalhes</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Abrir cadastro completo</div>
+                                  </div>
+                                </div>
+                              </Dropdown.Item>
+                              <Dropdown.Item onPress={() => openEdit(empresa)}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <PencilSquareIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>Editar</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Alterar informações</div>
+                                  </div>
+                                </div>
+                              </Dropdown.Item>
+                              <Dropdown.Item onPress={() => handleToggleAlvo(empresa)}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <FlagIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)' }}>{empresa.empresaAlvo ? 'Remover como Alvo' : 'Tornar Empresa Alvo'}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Marcar como empresa alvo</div>
+                                  </div>
+                                </div>
+                              </Dropdown.Item>
+                              <Dropdown.Item onPress={() => handleToggleCarteira(empresa)}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <BriefcaseIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: empresa.favorita ? '#F59E0B' : 'var(--color-text-secondary)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: empresa.favorita ? '#F59E0B' : 'var(--color-text-primary)' }}>
+                                      {empresa.favorita ? 'Remover da Carteira' : 'Levar para a Carteira'}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                      {empresa.favorita ? 'Retirar do acompanhamento' : 'Acompanhar em Minha Carteira'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </Dropdown.Item>
+                            </Dropdown.Section>
+                            <Dropdown.Section>
+                              <Header style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', padding: '8px 8px 6px', textTransform: 'uppercase', letterSpacing: '0.06em', borderTop: '1px solid var(--color-border)', marginTop: 4 }}>Zona de perigo</Header>
+                              <Dropdown.Item onPress={() => { setToDelete(empresa); deleteState.open() }}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <TrashIcon style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, color: 'var(--color-danger)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-danger)' }}>Excluir</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Remover permanentemente</div>
+                                  </div>
+                                </div>
+                              </Dropdown.Item>
+                            </Dropdown.Section>
                           </Dropdown.Menu>
                         </Dropdown.Popover>
                       </Dropdown>
@@ -338,42 +399,33 @@ export default function EmpresaList() {
                 {/* ── Step 0: Identificação ──────────────────────────────── */}
                 {step === 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 14 }}>
-                      <Field label="Tipo" required>
-                        <select className="yeb-input" style={S} value={form.tipo} onChange={(e) => setF('tipo', e.target.value)} autoFocus>
+                    <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 14 }}>
+                      <Field label="Tipo" required htmlFor="empresa-tipo">
+                        <select id="empresa-tipo" aria-required="true" className="yeb-input" style={S} value={form.tipo} onChange={(e) => setF('tipo', e.target.value)} autoFocus>
                           <option value="matriz">Matriz</option>
                           <option value="filial">Filial</option>
                         </select>
                       </Field>
-                      <Field label="CNPJ" required>
-                        <input className="yeb-input" style={S} placeholder="00.000.000/0000-00" value={form.cnpj} onChange={(e) => setF('cnpj', formatCNPJ(e.target.value))} />
+                      <Field label="CNPJ / EIN" required htmlFor="cnpj">
+                        <input id="cnpj" aria-required="true" className="yeb-input" style={S} placeholder="00.000.000/0000-00" value={form.cnpj} onChange={(e) => setF('cnpj', formatCNPJ(e.target.value))} />
                       </Field>
                     </div>
 
                     {form.tipo === 'filial' && (
-                      <Field label="CNPJ da Matriz" required>
-                        <input className="yeb-input" style={S} placeholder="00.000.000/0000-00" value={form.cnpjMatriz} onChange={(e) => setF('cnpjMatriz', formatCNPJ(e.target.value))} />
+                      <Field label="CNPJ da Matriz" required htmlFor="cnpj-matriz">
+                        <input id="cnpj-matriz" aria-required="true" className="yeb-input" style={S} placeholder="00.000.000/0000-00" value={form.cnpjMatriz} onChange={(e) => setF('cnpjMatriz', formatCNPJ(e.target.value))} />
                       </Field>
                     )}
 
-                    <Field label="Razão Social" required>
-                      <input className="yeb-input" style={S} placeholder="Nome jurídico completo da empresa" value={form.razaoSocial} onChange={(e) => setF('razaoSocial', e.target.value)} />
+                    <Field label="Razão Social" required htmlFor="razao-social">
+                      <input id="razao-social" aria-required="true" className="yeb-input" style={S} placeholder="Nome jurídico completo da empresa" value={form.razaoSocial} onChange={(e) => setF('razaoSocial', e.target.value)} />
                     </Field>
 
-                    <Field label="Nome Fantasia">
-                      <input className="yeb-input" style={S} placeholder="Nome comercial (opcional)" value={form.nomeFantasia} onChange={(e) => setF('nomeFantasia', e.target.value)} />
+                    <Field label="Nome Fantasia" htmlFor="nome-fantasia">
+                      <input id="nome-fantasia" className="yeb-input" style={S} placeholder="Nome comercial (opcional)" value={form.nomeFantasia} onChange={(e) => setF('nomeFantasia', e.target.value)} />
                     </Field>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Telefone">
-                        <input className="yeb-input" style={S} placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setF('telefone', formatPhone(e.target.value))} />
-                      </Field>
-                      <Field label="E-mail">
-                        <input className="yeb-input" style={S} type="email" placeholder="contato@empresa.com" value={form.email} onChange={(e) => setF('email', e.target.value)} />
-                      </Field>
-                    </div>
-
-                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, paddingTop: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, paddingTop: 4 }} aria-hidden="true">
                       <span style={{ color: 'var(--color-danger)' }}>*</span> Campos obrigatórios
                     </div>
                   </div>
@@ -383,12 +435,12 @@ export default function EmpresaList() {
                 {step === 1 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 14 }}>
-                      <Field label="País">
-                        <input className="yeb-input" style={S} value={form.pais} onChange={(e) => setF('pais', e.target.value)} />
+                      <Field label="País" required>
+                        <input className="yeb-input" style={S} value={form.pais} onChange={(e) => setF('pais', e.target.value)} autoFocus />
                       </Field>
                       <Field label="CEP">
                         <div style={{ position: 'relative' }}>
-                          <input className="yeb-input" style={S} placeholder="00000-000" value={form.cep} onChange={(e) => { setF('cep', formatCEP(e.target.value)); setCepTouched(true) }} autoFocus />
+                          <input className="yeb-input" style={S} placeholder="00000-000" value={form.cep} onChange={(e) => { setF('cep', formatCEP(e.target.value)); setCepTouched(true) }} />
                           {cepResult.loading && (
                             <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--color-brand-primary)', borderTopColor: 'transparent', animation: 'spin 0.6s linear infinite' }} />
                           )}
@@ -422,19 +474,49 @@ export default function EmpresaList() {
                       </Field>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 14 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 160px', gap: 14 }}>
                       <Field label="Cidade">
                         <input className={`yeb-input${autoFilled ? ' autofilled' : ''}`} style={S} value={form.cidade} onChange={(e) => setF('cidade', e.target.value)} />
                       </Field>
                       <Field label="UF">
                         <input className={`yeb-input${autoFilled ? ' autofilled' : ''}`} style={S} maxLength={2} value={form.uf} onChange={(e) => setF('uf', e.target.value.toUpperCase())} />
                       </Field>
+                      <Field label="Caixa Postal">
+                        <input className="yeb-input" style={S} placeholder="00000-000" value={form.caixaPostal} onChange={(e) => setF('caixaPostal', e.target.value)} />
+                      </Field>
                     </div>
                   </div>
                 )}
 
-                {/* ── Step 2: Dados Comerciais + Resumo ─────────────────── */}
+                {/* ── Step 2: Contato ───────────────────────────────────── */}
                 {step === 2 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 14 }}>
+                      <Field label="DDI" htmlFor="ddi">
+                        <select id="ddi" className="yeb-input" style={S} value={form.ddi} onChange={(e) => setF('ddi', e.target.value)} autoFocus>
+                          {['+55 🇧🇷', '+1 🇺🇸', '+44 🇬🇧', '+351 🇵🇹', '+54 🇦🇷', '+52 🇲🇽', '+49 🇩🇪', '+33 🇫🇷'].map((d) => {
+                            const code = d.split(' ')[0]
+                            return <option key={code} value={code}>{d}</option>
+                          })}
+                        </select>
+                      </Field>
+                      <Field label="Telefone geral" htmlFor="telefone">
+                        <input id="telefone" autoComplete="tel" className="yeb-input" style={S} placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setF('telefone', formatPhone(e.target.value))} />
+                      </Field>
+                    </div>
+
+                    <Field label="E-mail geral" htmlFor="email">
+                      <input id="email" autoComplete="email" className="yeb-input" style={S} type="email" placeholder="contato@empresa.com.br" value={form.email} onChange={(e) => setF('email', e.target.value)} />
+                    </Field>
+
+                    <Field label="Site" htmlFor="site">
+                      <input id="site" autoComplete="url" className="yeb-input" style={S} type="url" placeholder="exemplo.com.br" value={form.site} onChange={(e) => setF('site', e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+
+                {/* ── Step 3: Dados Comerciais + Resumo ─────────────────── */}
+                {step === 3 && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       <Field label="Segmento" required>
@@ -473,12 +555,12 @@ export default function EmpresaList() {
 
                 {/* Right: progress dots + next/save */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 5 }}>
                     {STEPS.map((_, i) => (
-                      <div key={i} style={{ width: i === step ? 18 : 6, height: 6, borderRadius: 3, background: i <= step ? 'var(--color-brand-primary)' : 'var(--color-border)', transition: 'all 0.2s' }} />
+                      <div key={i} style={{ width: i === step ? 16 : 6, height: 6, borderRadius: 3, background: i <= step ? 'var(--color-brand-primary)' : 'var(--color-border)', transition: 'all 0.2s' }} />
                     ))}
                   </div>
-                  {step < 2 ? (
+                  {step < lastStep ? (
                     <Button variant="primary" onPress={() => setStep((s) => s + 1)} isDisabled={step === 0 && !canNext0}>
                       Próximo →
                     </Button>

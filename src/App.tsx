@@ -12,6 +12,8 @@ import Pipeline from './pages/Pipeline'
 import Eficiencia from './pages/Eficiencia'
 import Indicadores from './pages/Indicadores'
 import MapaGuerra from './pages/MapaGuerra'
+import Carteira from './pages/Carteira'
+import Agenda from './pages/Agenda'
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
         <Route path="eficiencia" element={<Eficiencia />} />
         <Route path="indicadores" element={<Indicadores />} />
         <Route path="mapa-guerra" element={<MapaGuerra />} />
+        <Route path="carteira" element={<Carteira />} />
+        <Route path="agenda" element={<Agenda />} />
       </Route>
     </Routes>
   )

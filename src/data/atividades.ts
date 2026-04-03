@@ -11,14 +11,11 @@ export const atividades: Atividade[] = [
   { id: 8, usuarioId: 3, titulo: 'Prospecção Indústria Química', acao: 'Pesquisar contatos da IQP e agendar primeira reunião', etapas: [], prioridade: 'Media', inicio: '2026-03-28T15:00:00', fim: '2026-03-28T16:00:00', prazo: '2026-03-31' },
 ]
 
-export const getAtividadesByUsuario = (usuarioId: number) =>
-  atividades.filter((a) => a.usuarioId === usuarioId)
+export const addAtividade = (a: Atividade) => {
+  atividades.push(a)
+}
 
-export const getAtividadesByWeek = (weekStart: Date) => {
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 7)
-  return atividades.filter((a) => {
-    const d = new Date(a.inicio)
-    return d >= weekStart && d < weekEnd
-  })
+export const updateAtividade = (id: number, partial: Partial<Atividade>) => {
+  const idx = atividades.findIndex((a) => a.id === id)
+  if (idx !== -1) Object.assign(atividades[idx], partial)
 }

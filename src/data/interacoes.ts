@@ -14,3 +14,7 @@ export const interacoes: Interacao[] = [
 
 export const getInteracoesByEmpresa = (empresaId: number) =>
   interacoes.filter((i) => i.empresaId === empresaId)
+
+export const addInteracao = (interacao: Interacao) => {
+  interacoes.push(interacao)
+}

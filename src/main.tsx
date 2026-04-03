@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
+import '../node_modules/@heroui/react/dist/styles.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

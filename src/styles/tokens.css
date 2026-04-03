@@ -3,10 +3,17 @@
    Light Mode (padrão)
 ───────────────────────────────────────── */
 :root {
+  /* HeroUI accent override → botão primary */
+  --accent: #1E4A9F;
+  --accent-foreground: #ffffff;
+  --accent-hover: #163578;
+  --accent-soft: rgba(30, 74, 159, 0.12);
+  --accent-soft-foreground: #1E4A9F;
+
   /* Brand */
-  --color-brand-primary: #1D4ED8;
-  --color-brand-accent:  #3B82F6;
-  --color-brand-dark:    #1E3A8A;
+  --color-brand-primary: #1E4A9F;
+  --color-brand-accent:  #2D5FBF;
+  --color-brand-dark:    #163578;
 
   /* Backgrounds */
   --color-bg-page:  #F8FAFC;
