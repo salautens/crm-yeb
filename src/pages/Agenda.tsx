@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import { Button, Modal, useOverlayState } from '@heroui/react'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, ClockIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { atividades as atividadesData, addAtividade } from '../data/atividades'
-import type { Prioridade, Atividade } from '../types'
+import { produtos } from '../data/produtos'
+import { usuarios } from '../data/usuarios'
+import type { Prioridade, Atividade, TipoInteracao } from '../types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -26,6 +28,13 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
 }
 
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso)
   return `${d.getDate()} de ${MESES[d.getMonth()]}.`
@@ -46,6 +55,28 @@ const EMPTY_FORM = {
   inicio: '',
   fim: '',
   prazo: '',
+}
+
+const DESCRICAO_MAX = 5000
+
+const EMPTY_INTERACAO = {
+  titulo: '',
+  tipo: 'reuniao' as TipoInteracao,
+  efetividade: 'efetivo' as 'efetivo' | 'nao_efetivo',
+  dataHora: '',
+  linhaComercial: 'Vendas' as 'Vendas' | 'Gestão',
+  produtoId: 1,
+  usuarioId: 1,
+  descricao: '',
+  isLead: false,
+}
+
+const tipoInteracaoMap: Record<TipoInteracao, string> = {
+  qualificacao_bd:       'Qualificação BD',
+  tentativa_agendamento: 'Tentativa de Agendamento',
+  proposta_enviada:      'Proposta Enviada',
+  reuniao:               'Reunião',
+  fechamento:            'Fechamento',
 }
 
 // ─── Trello Card ──────────────────────────────────────────────────────────────
@@ -161,14 +192,12 @@ function TrelloColumn({
   items,
   done,
   onToggleDone,
-  onAddCard,
   today,
 }: {
   day: Date
   items: Atividade[]
   done: Set<number>
   onToggleDone: (id: number) => void
-  onAddCard: (day: Date) => void
   today: Date
 }) {
   const isToday  = isSameDay(day, today)
@@ -235,12 +264,6 @@ function TrelloColumn({
           )}
         </div>
 
-        <button
-          aria-label="Opções da coluna"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)', borderRadius: 6 }}
-        >
-          <EllipsisHorizontalIcon style={{ width: 18, height: 18 }} />
-        </button>
       </div>
 
       {/* Cards area */}
@@ -263,31 +286,6 @@ function TrelloColumn({
         ))}
       </div>
 
-      {/* Add card button */}
-      <button
-        aria-label={`Adicionar cartão em ${DIAS_FULL[day.getDay()]}`}
-        onClick={() => onAddCard(day)}
-        style={{
-          margin: '8px',
-          padding: '8px 12px',
-          background: 'transparent',
-          border: 'none',
-          borderRadius: 8,
-          cursor: 'pointer',
-          fontSize: 13,
-          color: 'var(--color-text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          transition: 'background 0.15s',
-          textAlign: 'left',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.07)')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-      >
-        <PlusIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
-        Adicionar um cartão
-      </button>
     </div>
   )
 }
@@ -299,6 +297,7 @@ export default function Agenda() {
   const [done, setDone]                 = useState<Set<number>>(new Set())
   const [filterPrio, setFilterPrio]     = useState<string>('')
   const [form, setForm]                 = useState(EMPTY_FORM)
+  const [interacao, setInteracao]       = useState(EMPTY_INTERACAO)
   const modalState                      = useOverlayState()
   const today                           = new Date()
 
@@ -335,30 +334,20 @@ export default function Agenda() {
   }
 
   const openNew = (day?: Date) => {
-    const dateStr = (day ?? today).toISOString().slice(0, 10)
-    setForm({ ...EMPTY_FORM, inicio: `${dateStr}T09:00`, fim: `${dateStr}T10:00`, prazo: dateStr })
+    const dateStr = (day ?? today).toISOString().slice(0, 16)
+    setInteracao({ ...EMPTY_INTERACAO, dataHora: dateStr })
     modalState.open()
   }
 
   const handleSave = () => {
-    if (!form.titulo.trim()) return
-    const nova: Atividade = {
-      id: Date.now(),
-      usuarioId: 3,
-      titulo: form.titulo,
-      acao: form.acao,
-      etapas: [],
-      prioridade: form.prioridade,
-      inicio: form.inicio || `${form.prazo}T09:00:00`,
-      fim:    form.fim    || `${form.prazo}T10:00:00`,
-      prazo:  form.prazo,
-    }
-    addAtividade(nova)
-    setLocalAtividades([...atividadesData])
+    if (!interacao.titulo.trim() || !interacao.dataHora) return
+    // TODO: persist interação
+    setInteracao(EMPTY_INTERACAO)
     modalState.close()
   }
 
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const setI = (k: string, v: unknown) => setInteracao((f) => ({ ...f, [k]: v }))
 
   const S: React.CSSProperties = {
     width: '100%', padding: '8px 12px', fontSize: 14,
@@ -378,7 +367,9 @@ export default function Agenda() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Agenda</h1>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Semana {getISOWeek(weekStart)}</span>
+            <span style={{ opacity: 0.4 }}>·</span>
             {weekDays[0].getDate()} de {MESES[weekDays[0].getMonth()]} — {weekDays[6].getDate()} de {MESES[weekDays[6].getMonth()]}
           </p>
         </div>
@@ -425,7 +416,7 @@ export default function Agenda() {
 
           <Button variant="primary" onPress={() => openNew()}>
             <PlusIcon style={{ width: 16, height: 16 }} aria-hidden="true" />
-            Novo cartão
+            Nova Interação
           </Button>
         </div>
       </div>
@@ -446,61 +437,114 @@ export default function Agenda() {
             items={items}
             done={done}
             onToggleDone={toggleDone}
-            onAddCard={openNew}
             today={today}
           />
         ))}
       </div>
 
-      {/* ── Modal Nova Atividade ────────────────────────────────────────────── */}
+      {/* ── Modal Nova Interação ────────────────────────────────────────────── */}
       <Modal isOpen={modalState.isOpen} onOpenChange={modalState.setOpen}>
         <Modal.Backdrop isDismissable={false}>
-          <Modal.Container size="sm">
+          <Modal.Container size="md">
             <Modal.Dialog>
               <Modal.Header style={{ padding: '20px 24px 16px' }}>
-                <Modal.Heading style={{ fontSize: 17, fontWeight: 700 }}>Novo cartão</Modal.Heading>
+                <Modal.Heading style={{ fontSize: 17, fontWeight: 700 }}>Nova Interação</Modal.Heading>
                 <Modal.CloseTrigger />
               </Modal.Header>
 
               <Modal.Body style={{ padding: '0 24px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* Título */}
                 <div>
-                  <label htmlFor="atv-titulo" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
+                  <label htmlFor="int-titulo" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
                     Título <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
-                    <span className="sr-only">(obrigatório)</span>
                   </label>
-                  <input id="atv-titulo" aria-required="true" className="yeb-input" style={S} placeholder="Ex: Reunião com Agromax" value={form.titulo} onChange={(e) => setF('titulo', e.target.value)} autoFocus />
+                  <input id="int-titulo" aria-required="true" className="yeb-input" style={S} placeholder="Ex: Reunião de apresentação" value={interacao.titulo} onChange={(e) => setI('titulo', e.target.value)} autoFocus />
                 </div>
 
-                <div>
-                  <label htmlFor="atv-acao" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Descrição</label>
-                  <textarea id="atv-acao" className="yeb-input" style={{ ...S, resize: 'vertical', minHeight: 72 }} placeholder="O que precisa ser feito?" value={form.acao} onChange={(e) => setF('acao', e.target.value)} />
-                </div>
-
+                {/* Tipo + Efetividade */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <label htmlFor="atv-inicio" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Início</label>
-                    <input id="atv-inicio" type="datetime-local" className="yeb-input" style={S} value={form.inicio} onChange={(e) => setF('inicio', e.target.value)} />
+                    <label htmlFor="int-tipo" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
+                      Tipo <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
+                    </label>
+                    <select id="int-tipo" aria-required="true" className="yeb-input" style={S} value={interacao.tipo} onChange={(e) => setI('tipo', e.target.value)}>
+                      {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
                   </div>
                   <div>
-                    <label htmlFor="atv-fim" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Fim</label>
-                    <input id="atv-fim" type="datetime-local" className="yeb-input" style={S} value={form.fim} onChange={(e) => setF('fim', e.target.value)} />
+                    <label htmlFor="int-efetividade" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
+                      Efetividade <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
+                    </label>
+                    <select id="int-efetividade" aria-required="true" className="yeb-input" style={S} value={interacao.efetividade} onChange={(e) => setI('efetividade', e.target.value)}>
+                      <option value="efetivo">Efetivo</option>
+                      <option value="nao_efetivo">Não Efetivo</option>
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="atv-prioridade" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Prioridade</label>
-                  <select id="atv-prioridade" className="yeb-input" style={S} value={form.prioridade} onChange={(e) => setF('prioridade', e.target.value)}>
-                    <option value="Alta">🔴 Alta</option>
-                    <option value="Media">🟡 Média</option>
-                    <option value="Baixa">🟢 Baixa</option>
-                  </select>
+                {/* Data e Hora + Linha Comercial */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label htmlFor="int-datahora" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3 }}>
+                      Data e Hora <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
+                    </label>
+                    <input id="int-datahora" aria-required="true" type="datetime-local" className="yeb-input" style={S} value={interacao.dataHora} onChange={(e) => setI('dataHora', e.target.value)} />
+                  </div>
+                  <div>
+                    <label htmlFor="int-linha" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Linha Comercial</label>
+                    <select id="int-linha" className="yeb-input" style={S} value={interacao.linhaComercial} onChange={(e) => setI('linhaComercial', e.target.value)}>
+                      <option value="Vendas">Vendas</option>
+                      <option value="Gestão">Gestão</option>
+                    </select>
+                  </div>
                 </div>
+
+                {/* Produto + Responsável */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label htmlFor="int-produto" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Produto</label>
+                    <select id="int-produto" className="yeb-input" style={S} value={interacao.produtoId} onChange={(e) => setI('produtoId', Number(e.target.value))}>
+                      {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="int-responsavel" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Responsável</label>
+                    <select id="int-responsavel" className="yeb-input" style={S} value={interacao.usuarioId} onChange={(e) => setI('usuarioId', Number(e.target.value))}>
+                      {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label htmlFor="int-descricao" style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Descrição</label>
+                  <textarea
+                    id="int-descricao"
+                    className="yeb-input"
+                    style={{ ...S, resize: 'vertical', minHeight: 80 }}
+                    placeholder="Descreva o que aconteceu nessa interação…"
+                    value={interacao.descricao}
+                    maxLength={DESCRICAO_MAX}
+                    onChange={(e) => setI('descricao', e.target.value)}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, marginTop: 4, color: interacao.descricao.length > DESCRICAO_MAX * 0.9 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                    {interacao.descricao.length}/{DESCRICAO_MAX}
+                  </div>
+                </div>
+
+                {/* Lead */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                  <input type="checkbox" checked={interacao.isLead} onChange={(e) => setI('isLead', e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)' }} />
+                  Marcar como Lead
+                </label>
+
               </Modal.Body>
 
               <Modal.Footer style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <Button variant="ghost" onPress={modalState.close}>Cancelar</Button>
-                <Button variant="primary" onPress={handleSave} isDisabled={!form.titulo.trim()}>
-                  Adicionar cartão
+                <Button variant="primary" onPress={handleSave} isDisabled={!interacao.titulo.trim() || !interacao.dataHora}>
+                  Registrar Interação
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
