@@ -9,12 +9,14 @@ import { TablePagination, EmpresaAlvoBadge } from '../components/ui'
 import { Badge } from '../components/ui/Badge'
 import type { PipelineStage, FiltroSalvo } from '../types'
 
-const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' }> = {
-  prospeccao:  { label: 'Prospecção',  variant: 'neutral'  },
-  qualificacao: { label: 'Qualificação', variant: 'brand'  },
-  proposta:    { label: 'Proposta',    variant: 'pending'  },
-  negociacao:  { label: 'Negociação',  variant: 'pending'  },
-  fechado:     { label: 'Fechado',     variant: 'active'   },
+const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
+  prospeccao:        { label: 'Prospecção',       variant: 'neutral'   },
+  qualificacao:      { label: 'Qualificação',      variant: 'brand'     },
+  proposta_enviada:  { label: 'Proposta Enviada',  variant: 'pending'   },
+  em_negociacao:     { label: 'Em Negociação',     variant: 'pending'   },
+  proposta_aceita:   { label: 'Proposta Aceita',   variant: 'active'    },
+  proposta_recusada: { label: 'Proposta Recusada', variant: 'danger'    },
+  fechado:           { label: 'Fechado',           variant: 'inactive'  },
 }
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']

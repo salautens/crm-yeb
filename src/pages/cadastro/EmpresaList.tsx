@@ -237,7 +237,7 @@ export default function EmpresaList() {
     if (editingId !== null) {
       updateEmpresa(editingId, payload)
     } else {
-      addEmpresa({ id: Date.now(), ...payload, favorita: false, createdAt: new Date().toISOString().split('T')[0] } as Empresa)
+      addEmpresa({ id: Date.now(), ...payload, favorita: false, statusRelacionamento: 'nao_definido', createdAt: new Date().toISOString().split('T')[0] } as Empresa)
     }
     setData([...initialEmpresas]); modalState.close()
   }
