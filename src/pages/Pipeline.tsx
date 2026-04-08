@@ -5,11 +5,13 @@ import { EmpresaAlvoBadge } from '../components/ui'
 import type { PipelineStage } from '../types'
 
 const STAGES: { key: PipelineStage; label: string; color: string }[] = [
-  { key: 'prospeccao',  label: 'Prospecção',  color: '#94A3B8' },
-  { key: 'qualificacao', label: 'Qualificação', color: 'var(--color-brand-primary)' },
-  { key: 'proposta',   label: 'Proposta',    color: '#D97706' },
-  { key: 'negociacao', label: 'Negociação',  color: '#7C3AED' },
-  { key: 'fechado',    label: 'Fechado',     color: 'var(--color-success)' },
+  { key: 'prospeccao',        label: 'Prospecção',       color: '#94A3B8' },
+  { key: 'qualificacao',      label: 'Qualificação',      color: 'var(--color-brand-primary)' },
+  { key: 'proposta_enviada',  label: 'Proposta Enviada',  color: '#D97706' },
+  { key: 'em_negociacao',     label: 'Em Negociação',     color: '#7C3AED' },
+  { key: 'proposta_aceita',   label: 'Proposta Aceita',   color: '#10B981' },
+  { key: 'proposta_recusada', label: 'Proposta Recusada', color: '#EF4444' },
+  { key: 'fechado',           label: 'Fechado',           color: 'var(--color-success)' },
 ]
 
 export default function Pipeline() {

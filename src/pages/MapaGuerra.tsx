@@ -5,11 +5,13 @@ import { segmentos } from '../data/segmentos'
 import type { PipelineStage } from '../types'
 
 const STAGES: { key: PipelineStage; label: string }[] = [
-  { key: 'prospeccao',  label: 'Prospecção'  },
-  { key: 'qualificacao', label: 'Qualificação' },
-  { key: 'proposta',   label: 'Proposta'    },
-  { key: 'negociacao', label: 'Negociação'  },
-  { key: 'fechado',    label: 'Fechado'     },
+  { key: 'prospeccao',        label: 'Prospecção'       },
+  { key: 'qualificacao',      label: 'Qualificação'      },
+  { key: 'proposta_enviada',  label: 'Proposta Enviada'  },
+  { key: 'em_negociacao',     label: 'Em Negociação'     },
+  { key: 'proposta_aceita',   label: 'Proposta Aceita'   },
+  { key: 'proposta_recusada', label: 'Proposta Recusada' },
+  { key: 'fechado',           label: 'Fechado'           },
 ]
 
 function heatColor(value: number, max: number) {

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "crm-yeb",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["/Users/ilhadesabrina/projetos/crm-yeb/node_modules/.bin/vite"],
+      "port": 5173
+    }
+  ]
+}

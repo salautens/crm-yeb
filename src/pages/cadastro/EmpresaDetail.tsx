@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button, Modal, useOverlayState } from '@heroui/react'
 import { getEmpresa } from '../../data/empresas'
@@ -10,7 +10,7 @@ import { getContratosByEmpresa } from '../../data/contratos'
 import { getProduto, produtos } from '../../data/produtos'
 import { Badge } from '../../components/ui/Badge'
 import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge } from '../../components/ui/StatusBadge'
-import type { PipelineStage, TipoInteracao } from '../../types'
+import type { PipelineStage, TipoInteracao, StatusRelacionamento } from '../../types'
 
 const DESCRICAO_MAX = 5000
 
@@ -50,20 +50,37 @@ const EMPTY_INTERACAO = {
   dataHora: new Date().toISOString().slice(0, 16),
 }
 
-const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' }> = {
-  prospeccao:  { label: 'Prospecção',  variant: 'neutral'  },
-  qualificacao: { label: 'Qualificação', variant: 'brand'  },
-  proposta:    { label: 'Proposta',    variant: 'pending'  },
-  negociacao:  { label: 'Negociação',  variant: 'pending'  },
-  fechado:     { label: 'Fechado',     variant: 'active'   },
+const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
+  prospeccao:       { label: 'Prospecção',       variant: 'neutral'   },
+  qualificacao:     { label: 'Qualificação',      variant: 'brand'     },
+  proposta_enviada: { label: 'Proposta Enviada',  variant: 'pending'   },
+  em_negociacao:    { label: 'Em Negociação',     variant: 'pending'   },
+  proposta_aceita:  { label: 'Proposta Aceita',   variant: 'active'    },
+  proposta_recusada:{ label: 'Proposta Recusada', variant: 'danger'    },
+  fechado:          { label: 'Fechado',           variant: 'inactive'  },
 }
 
-const tipoInteracaoMap: Record<TipoInteracao, string> = {
-  qualificacao_bd:       'Qualificação BD',
-  tentativa_agendamento: 'Tentativa de Agendamento',
-  proposta_enviada:      'Proposta Enviada',
-  reuniao:               'Reunião',
-  fechamento:            'Fechamento',
+const tipoInteracaoMap: Record<TipoInteracao, { label: string; icon: string }> = {
+  reuniao_presencial:    { label: 'Reunião Presencial',     icon: '🤝' },
+  videoconferencia:      { label: 'Videoconferência',        icon: '📹' },
+  ligacao:               { label: 'Ligação',                 icon: '📞' },
+  email:                 { label: 'E-mail',                  icon: '✉️'  },
+  whatsapp:              { label: 'WhatsApp',                icon: '💬' },
+  qualificacao_bd:       { label: 'Qualificação BD',         icon: '🔍' },
+  tentativa_agendamento: { label: 'Tentativa de Agendamento',icon: '📅' },
+  proposta_enviada:      { label: 'Proposta Enviada',        icon: '📄' },
+  reuniao:               { label: 'Reunião',                 icon: '📋' },
+  fechamento:            { label: 'Fechamento',              icon: '✅' },
+  outro:                 { label: 'Outro',                   icon: '•'  },
+}
+
+const statusRelacionamentoMap: Record<StatusRelacionamento, { label: string; color: string }> = {
+  lead:          { label: 'Lead',          color: '#94A3B8' },
+  prospect:      { label: 'Prospect',      color: '#3B82F6' },
+  cliente_ativo: { label: 'Cliente Ativo', color: '#10B981' },
+  ex_cliente:    { label: 'Ex-Cliente',    color: '#F59E0B' },
+  parceiro:      { label: 'Parceiro',      color: '#8B5CF6' },
+  nao_definido:  { label: 'Não Definido',  color: '#94A3B8' },
 }
 
 const TABS = ['Visão Geral', 'Profissionais', 'Interações', 'Contratos']
@@ -103,6 +120,19 @@ export default function EmpresaDetail() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
+  // Profissionais — sort + busca
+  const [profBusca, setProfBusca] = useState('')
+  const [profSort, setProfSort] = useState<{ field: 'nome' | 'cargo'; dir: 'asc' | 'desc' }>({ field: 'nome', dir: 'asc' })
+
+  // Interação selecionada para leitura
+  const [interacaoSelecionada, setInteracaoSelecionada] = useState<typeof interacoesLocal[0] | null>(null)
+
+  // Interações — filtros
+  const [filtroTipo, setFiltroTipo] = useState<string>('')
+  const [filtroEfetividade, setFiltroEfetividade] = useState<string>('')
+  const [filtroProduto, setFiltroProduto] = useState<string>('')
+  const [filtroUsuario, setFiltroUsuario] = useState<string>('')
+
   const empresa = getEmpresa(Number(id))
 
   const DRAFT_KEY = `interacao-draft-${Number(id)}`
@@ -128,6 +158,36 @@ export default function EmpresaDetail() {
   const contratos = getContratosByEmpresa(empresa.id)
   const pipeline = pipelineMap[empresa.pipeline]
 
+  const profissionaisFiltrados = useMemo(() => {
+    const q = profBusca.toLowerCase()
+    return profissionais
+      .filter((p) => !q || p.nome.toLowerCase().includes(q) || p.cargo.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const va = a[profSort.field].toLowerCase()
+        const vb = b[profSort.field].toLowerCase()
+        return profSort.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      })
+  }, [profissionais, profBusca, profSort])
+
+  const toggleSort = (field: 'nome' | 'cargo') =>
+    setProfSort((s) => ({ field, dir: s.field === field && s.dir === 'asc' ? 'desc' : 'asc' }))
+
+  const interacoesFiltradas = useMemo(() => {
+    return interacoesLocal.filter((i) => {
+      if (filtroTipo && i.tipo !== filtroTipo) return false
+      if (filtroEfetividade && i.efetividade !== filtroEfetividade) return false
+      if (filtroProduto && String(i.produtoId) !== filtroProduto) return false
+      if (filtroUsuario && String(i.usuarioId) !== filtroUsuario) return false
+      return true
+    })
+  }, [interacoesLocal, filtroTipo, filtroEfetividade, filtroProduto, filtroUsuario])
+
+  const filtrosAtivos = [filtroTipo, filtroEfetividade, filtroProduto, filtroUsuario].filter(Boolean).length
+
+  const limparFiltros = () => {
+    setFiltroTipo(''); setFiltroEfetividade(''); setFiltroProduto(''); setFiltroUsuario('')
+  }
+
   const setFI = (field: string, value: unknown) => setFormInteracao((f) => ({ ...f, [field]: value }))
 
   const copyToClipboard = (text: string, key: string) => {
@@ -139,8 +199,8 @@ export default function EmpresaDetail() {
 
   const handleSaveInteracao = () => {
     try {
-      if (!formInteracao.titulo.trim()) {
-        setSaveError('O título é obrigatório.')
+      if (!formInteracao.dataHora) {
+        setSaveError('A data e hora são obrigatórias.')
         return
       }
       const nova = {
@@ -230,6 +290,16 @@ export default function EmpresaDetail() {
             <InfoRow label="Segmento" value={segmento?.nome} />
             <InfoRow label="Responsável" value={responsavel?.nome} />
             <InfoRow label="Cadastrado em" value={new Date(empresa.createdAt).toLocaleDateString('pt-BR')} />
+            <div style={{ display: 'flex', gap: 8, fontSize: 14, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
+              <span style={{ width: 160, color: 'var(--color-text-muted)', flexShrink: 0 }}>Status de Relacionamento</span>
+              <span style={{
+                fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 12,
+                background: `${statusRelacionamentoMap[empresa.statusRelacionamento]?.color}22`,
+                color: statusRelacionamentoMap[empresa.statusRelacionamento]?.color,
+              }}>
+                {statusRelacionamentoMap[empresa.statusRelacionamento]?.label ?? '—'}
+              </span>
+            </div>
           </div>
 
           {/* Localização */}
@@ -269,24 +339,50 @@ export default function EmpresaDetail() {
 
       {activeTab === 1 && (
         <div role="tabpanel" id="tabpanel-1" aria-labelledby="tab-1" style={cardStyle}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Profissionais ({profissionais.length})
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+              Profissionais ({profissionaisFiltrados.length}/{profissionais.length})
+            </h3>
+            <input
+              value={profBusca}
+              onChange={(e) => setProfBusca(e.target.value)}
+              placeholder="Buscar por nome ou cargo…"
+              style={{ ...S, width: 240, padding: '7px 12px', fontSize: 13 }}
+            />
+          </div>
           {profissionais.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
               Nenhum profissional cadastrado.
+            </p>
+          ) : profissionaisFiltrados.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
+              Nenhum resultado para "{profBusca}".
             </p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['Nome', 'Cargo', 'E-mail', 'Telefone', 'Status'].map((h) => (
+                  {(['Nome', 'Cargo'] as const).map((h) => {
+                    const field = h === 'Nome' ? 'nome' : 'cargo'
+                    const active = profSort.field === field
+                    return (
+                      <th
+                        key={h}
+                        scope="col"
+                        onClick={() => toggleSort(field)}
+                        style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: active ? 'var(--color-brand-primary)' : 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                      >
+                        {h} {active ? (profSort.dir === 'asc' ? '↑' : '↓') : ''}
+                      </th>
+                    )
+                  })}
+                  {['E-mail', 'Telefone', 'Status'].map((h) => (
                     <th key={h} scope="col" style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {profissionais.map((p) => (
+                {profissionaisFiltrados.map((p) => (
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                     <td style={{ padding: '12px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>
                       {p.parentId && <span style={{ color: 'var(--color-text-muted)', marginRight: 6 }}>↳</span>}
@@ -297,12 +393,7 @@ export default function EmpresaDetail() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 13, color: 'var(--color-brand-accent)' }}>{p.email}</span>
                         {p.email && (
-                          <button
-                            aria-label={`Copiar e-mail de ${p.nome}`}
-                            onClick={() => copyToClipboard(p.email!, `email-${p.id}`)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, color: copied === `email-${p.id}` ? 'var(--color-success)' : 'var(--color-text-muted)', fontSize: 12 }}
-                            title="Copiar e-mail"
-                          >
+                          <button aria-label={`Copiar e-mail de ${p.nome}`} onClick={() => copyToClipboard(p.email!, `email-${p.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, color: copied === `email-${p.id}` ? 'var(--color-success)' : 'var(--color-text-muted)', fontSize: 12 }} title="Copiar e-mail">
                             {copied === `email-${p.id}` ? '✓' : '⎘'}
                           </button>
                         )}
@@ -312,12 +403,7 @@ export default function EmpresaDetail() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{p.telefone}</span>
                         {p.telefone && (
-                          <button
-                            aria-label={`Copiar telefone de ${p.nome}`}
-                            onClick={() => copyToClipboard(p.telefone!, `tel-${p.id}`)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, color: copied === `tel-${p.id}` ? 'var(--color-success)' : 'var(--color-text-muted)', fontSize: 12 }}
-                            title="Copiar telefone"
-                          >
+                          <button aria-label={`Copiar telefone de ${p.nome}`} onClick={() => copyToClipboard(p.telefone!, `tel-${p.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, color: copied === `tel-${p.id}` ? 'var(--color-success)' : 'var(--color-text-muted)', fontSize: 12 }} title="Copiar telefone">
                             {copied === `tel-${p.id}` ? '✓' : '⎘'}
                           </button>
                         )}
@@ -336,9 +422,9 @@ export default function EmpresaDetail() {
 
       {activeTab === 2 && (
         <div role="tabpanel" id="tabpanel-2" aria-labelledby="tab-2" style={cardStyle}>
-          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Histórico de Interações ({interacoesLocal.length})
+              Histórico de Interações ({interacoesFiltradas.length}/{interacoesLocal.length})
             </h3>
             <Button variant="primary" onPress={() => {
               const saved = localStorage.getItem(DRAFT_KEY)
@@ -360,21 +446,56 @@ export default function EmpresaDetail() {
               + Nova Interação
             </Button>
           </div>
+          {/* Filtros */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} style={{ ...S, width: 'auto', fontSize: 12, padding: '5px 10px', borderColor: filtroTipo ? 'var(--color-brand-primary)' : 'var(--color-border)' }}>
+              <option value="">Todos os tipos</option>
+              {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+            </select>
+            <select value={filtroEfetividade} onChange={(e) => setFiltroEfetividade(e.target.value)} style={{ ...S, width: 'auto', fontSize: 12, padding: '5px 10px', borderColor: filtroEfetividade ? 'var(--color-brand-primary)' : 'var(--color-border)' }}>
+              <option value="">Efetividade</option>
+              <option value="efetivo">Efetivo</option>
+              <option value="nao_efetivo">Não Efetivo</option>
+            </select>
+            <select value={filtroProduto} onChange={(e) => setFiltroProduto(e.target.value)} style={{ ...S, width: 'auto', fontSize: 12, padding: '5px 10px', borderColor: filtroProduto ? 'var(--color-brand-primary)' : 'var(--color-border)' }}>
+              <option value="">Todos os produtos</option>
+              {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+            <select value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)} style={{ ...S, width: 'auto', fontSize: 12, padding: '5px 10px', borderColor: filtroUsuario ? 'var(--color-brand-primary)' : 'var(--color-border)' }}>
+              <option value="">Todos os responsáveis</option>
+              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+            </select>
+            {filtrosAtivos > 0 && (
+              <button onClick={limparFiltros} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--color-danger)', padding: '5px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                ✕ Limpar {filtrosAtivos} filtro{filtrosAtivos > 1 ? 's' : ''}
+              </button>
+            )}
+          </div>
+
           {interacoesLocal.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
               Nenhuma interação registrada.
             </p>
+          ) : interacoesFiltradas.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
+              Nenhuma interação com os filtros selecionados.
+            </p>
           ) : (
             <div aria-live="polite" aria-label="Histórico de interações" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {interacoesLocal.map((interacao) => (
+              {interacoesFiltradas.map((interacao) => (
                 <div
                   key={interacao.id}
+                  onClick={() => setInteracaoSelecionada(interacao)}
                   style={{
                     padding: 16,
                     border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-md)',
                     borderLeft: `3px solid ${interacao.efetividade === 'efetivo' ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                    cursor: 'pointer',
+                    transition: 'background 0.12s',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '')}
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -385,14 +506,16 @@ export default function EmpresaDetail() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Badge variant="neutral">{tipoInteracaoMap[interacao.tipo]}</Badge>
+                      <Badge variant="neutral">{tipoInteracaoMap[interacao.tipo]?.icon} {tipoInteracaoMap[interacao.tipo]?.label}</Badge>
                       <Badge variant={interacao.efetividade === 'efetivo' ? 'active' : 'danger'}>
                         {interacao.efetividade === 'efetivo' ? 'Efetivo' : 'Não Efetivo'}
                       </Badge>
                       {interacao.isLead && <Badge variant="brand">Lead</Badge>}
                     </div>
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 8 }}>{interacao.descricao}</p>
+                  {interacao.descricao && (
+                    <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{interacao.descricao}</p>
+                  )}
                   <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>
                     {interacao.linhaComercial} · {getProduto(interacao.produtoId)?.nome}
                   </div>
@@ -447,6 +570,74 @@ export default function EmpresaDetail() {
         </div>
       )}
 
+      {/* Modal Leitura de Interação */}
+      {interacaoSelecionada && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setInteracaoSelecionada(null)}
+        >
+          <div
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                {interacaoSelecionada.titulo && (
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>{interacaoSelecionada.titulo}</h2>
+                )}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Badge variant="neutral">{tipoInteracaoMap[interacaoSelecionada.tipo]?.icon} {tipoInteracaoMap[interacaoSelecionada.tipo]?.label}</Badge>
+                  <Badge variant={interacaoSelecionada.efetividade === 'efetivo' ? 'active' : 'danger'}>
+                    {interacaoSelecionada.efetividade === 'efetivo' ? 'Efetivo' : 'Não Efetivo'}
+                  </Badge>
+                  {interacaoSelecionada.isLead && <Badge variant="brand">Lead</Badge>}
+                </div>
+              </div>
+              <button onClick={() => setInteracaoSelecionada(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', display: 'flex', flexShrink: 0 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Meta */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[
+                  { label: 'Data e Hora', value: new Date(interacaoSelecionada.dataHora).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) },
+                  { label: 'Responsável', value: getUsuario(interacaoSelecionada.usuarioId)?.nome ?? '—' },
+                  { label: 'Produto', value: getProduto(interacaoSelecionada.produtoId)?.nome ?? '—' },
+                  { label: 'Linha Comercial', value: interacaoSelecionada.linhaComercial },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ background: 'var(--color-bg-muted)', borderRadius: 8, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Descrição */}
+              {interacaoSelecionada.descricao ? (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Descrição</div>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.7, margin: 0 }}>{interacaoSelecionada.descricao}</p>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Sem descrição registrada.</p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '12px 24px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{tempoRelativo(interacaoSelecionada.dataHora)}</span>
+              <button onClick={() => setInteracaoSelecionada(null)} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Nova Interação */}
       <Modal isOpen={modalInteracao.isOpen} onOpenChange={modalInteracao.setOpen}>
         <Modal.Backdrop isDismissable={false}>
@@ -472,14 +663,14 @@ export default function EmpresaDetail() {
                   </div>
                 )}
 
-                <Field label="Título" required htmlFor="interacao-titulo">
-                  <input id="interacao-titulo" aria-required="true" className="yeb-input" style={S} placeholder="Ex: Reunião de apresentação" value={formInteracao.titulo} onChange={(e) => setFI('titulo', e.target.value)} autoFocus />
+                <Field label="Título" htmlFor="interacao-titulo">
+                  <input id="interacao-titulo" className="yeb-input" style={S} placeholder="Ex: Reunião de apresentação (opcional)" value={formInteracao.titulo} onChange={(e) => setFI('titulo', e.target.value)} autoFocus />
                 </Field>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <Field label="Tipo" required htmlFor="interacao-tipo">
                     <select id="interacao-tipo" aria-required="true" className="yeb-input" style={S} value={formInteracao.tipo} onChange={(e) => setFI('tipo', e.target.value)}>
-                      {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
                     </select>
                   </Field>
                   <Field label="Efetividade" required htmlFor="interacao-efetividade">
@@ -519,11 +710,16 @@ export default function EmpresaDetail() {
                   <textarea
                     id="interacao-descricao"
                     className="yeb-input"
-                    style={{ ...S, resize: 'vertical', minHeight: 80 }}
+                    style={{ ...S, resize: 'none', minHeight: 80, maxHeight: 400, overflowY: 'auto' }}
                     placeholder="Descreva o que aconteceu nessa interação…"
                     value={formInteracao.descricao}
                     maxLength={DESCRICAO_MAX}
-                    onChange={(e) => setFI('descricao', e.target.value)}
+                    onChange={(e) => {
+                      setFI('descricao', e.target.value)
+                      const el = e.target
+                      el.style.height = 'auto'
+                      el.style.height = Math.min(el.scrollHeight, 400) + 'px'
+                    }}
                   />
                   <div style={{
                     display: 'flex',
@@ -554,7 +750,7 @@ export default function EmpresaDetail() {
                 )}
                 <div style={{ display: 'flex', gap: 10 }}>
                   <Button variant="ghost" onPress={modalInteracao.close}>Cancelar</Button>
-                  <Button variant="primary" onPress={handleSaveInteracao} isDisabled={!formInteracao.titulo}>
+                  <Button variant="primary" onPress={handleSaveInteracao} isDisabled={!formInteracao.dataHora}>
                     Registrar Interação
                   </Button>
                 </div>

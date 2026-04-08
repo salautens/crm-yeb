@@ -31,12 +31,14 @@ const COLUNAS_DEFAULT: Coluna[] = [
 
 const MAX_COLUNAS = 9
 
-const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' }> = {
-  prospeccao:   { label: 'Prospecção',   variant: 'neutral' },
-  qualificacao: { label: 'Qualificação', variant: 'brand'   },
-  proposta:     { label: 'Proposta',     variant: 'pending' },
-  negociacao:   { label: 'Negociação',   variant: 'pending' },
-  fechado:      { label: 'Fechado',      variant: 'active'  },
+const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
+  prospeccao:        { label: 'Prospecção',       variant: 'neutral'  },
+  qualificacao:      { label: 'Qualificação',      variant: 'brand'    },
+  proposta_enviada:  { label: 'Proposta Enviada',  variant: 'pending'  },
+  em_negociacao:     { label: 'Em Negociação',     variant: 'pending'  },
+  proposta_aceita:   { label: 'Proposta Aceita',   variant: 'active'   },
+  proposta_recusada: { label: 'Proposta Recusada', variant: 'danger'   },
+  fechado:           { label: 'Fechado',           variant: 'inactive' },
 }
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']

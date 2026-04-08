@@ -1,17 +1,38 @@
 // ─── Entidades principais ───────────────────────────────────────────
 
-export type PipelineStage = 'prospeccao' | 'qualificacao' | 'proposta' | 'negociacao' | 'fechado'
+export type StatusRelacionamento =
+  | 'lead'
+  | 'prospect'
+  | 'cliente_ativo'
+  | 'ex_cliente'
+  | 'parceiro'
+  | 'nao_definido'
+
+export type PipelineStage =
+  | 'prospeccao'
+  | 'qualificacao'
+  | 'proposta_enviada'
+  | 'em_negociacao'
+  | 'proposta_aceita'
+  | 'proposta_recusada'
+  | 'fechado'
 export type UserRole = 'admin' | 'gestor' | 'vendedor'
 export type ContractStatus = 'ativo' | 'vencendo' | 'vencido' | 'cancelado'
 export type RegularizacaoStatus = 'regular' | 'pendente'
 export type Prioridade = 'Alta' | 'Media' | 'Baixa'
 export type Efetividade = 'efetivo' | 'nao_efetivo'
 export type TipoInteracao =
+  | 'reuniao_presencial'
+  | 'videoconferencia'
+  | 'ligacao'
+  | 'email'
+  | 'whatsapp'
   | 'qualificacao_bd'
   | 'tentativa_agendamento'
   | 'proposta_enviada'
   | 'reuniao'
   | 'fechamento'
+  | 'outro'
 
 export interface Segmento {
   id: number
@@ -52,6 +73,7 @@ export interface Empresa {
   empresaAlvo: boolean
   favorita: boolean
   pipeline: PipelineStage
+  statusRelacionamento: StatusRelacionamento
   usuarioId: number
   createdAt: string
 }

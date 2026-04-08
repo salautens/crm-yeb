@@ -72,11 +72,17 @@ const EMPTY_INTERACAO = {
 }
 
 const tipoInteracaoMap: Record<TipoInteracao, string> = {
-  qualificacao_bd:       'Qualificação BD',
-  tentativa_agendamento: 'Tentativa de Agendamento',
-  proposta_enviada:      'Proposta Enviada',
-  reuniao:               'Reunião',
-  fechamento:            'Fechamento',
+  reuniao_presencial:    '🤝 Reunião Presencial',
+  videoconferencia:      '📹 Videoconferência',
+  ligacao:               '📞 Ligação',
+  email:                 '✉️ E-mail',
+  whatsapp:              '💬 WhatsApp',
+  qualificacao_bd:       '🔍 Qualificação BD',
+  tentativa_agendamento: '📅 Tentativa de Agendamento',
+  proposta_enviada:      '📄 Proposta Enviada',
+  reuniao:               '📋 Reunião',
+  fechamento:            '✅ Fechamento',
+  outro:                 '• Outro',
 }
 
 // ─── Trello Card ──────────────────────────────────────────────────────────────

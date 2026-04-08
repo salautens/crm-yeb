@@ -10,15 +10,26 @@ import { useViaCep } from '../../hooks/useViaCep'
 import { usePagination } from '../../hooks/usePagination'
 import { PageHeader, TablePagination, ConfirmDialog, EmpresaAlvoBadge } from '../../components/ui'
 import { Badge } from '../../components/ui/Badge'
-import type { Empresa, PipelineStage } from '../../types'
+import type { Empresa, PipelineStage, StatusRelacionamento } from '../../types'
 
 // ─── Maps ──────────────────────────────────────────────────────────────────────
-const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' }> = {
-  prospeccao:  { label: 'Prospecção',  variant: 'neutral'  },
-  qualificacao: { label: 'Qualificação', variant: 'brand'  },
-  proposta:    { label: 'Proposta',    variant: 'pending'  },
-  negociacao:  { label: 'Negociação',  variant: 'pending'  },
-  fechado:     { label: 'Fechado',     variant: 'active'   },
+const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
+  prospeccao:        { label: 'Prospecção',       variant: 'neutral'   },
+  qualificacao:      { label: 'Qualificação',      variant: 'brand'     },
+  proposta_enviada:  { label: 'Proposta Enviada',  variant: 'pending'   },
+  em_negociacao:     { label: 'Em Negociação',     variant: 'pending'   },
+  proposta_aceita:   { label: 'Proposta Aceita',   variant: 'active'    },
+  proposta_recusada: { label: 'Proposta Recusada', variant: 'danger'    },
+  fechado:           { label: 'Fechado',           variant: 'inactive'  },
+}
+
+const statusRelMap: Record<StatusRelacionamento, { label: string; color: string }> = {
+  lead:          { label: 'Lead',          color: '#94A3B8' },
+  prospect:      { label: 'Prospect',      color: '#3B82F6' },
+  cliente_ativo: { label: 'Cliente Ativo', color: '#10B981' },
+  ex_cliente:    { label: 'Ex-Cliente',    color: '#F59E0B' },
+  parceiro:      { label: 'Parceiro',      color: '#8B5CF6' },
+  nao_definido:  { label: '—',             color: '#94A3B8' },
 }
 
 // ─── Masks ─────────────────────────────────────────────────────────────────────
@@ -175,6 +186,7 @@ export default function EmpresaList() {
   const [search, setSearch] = useState('')
   const [filterSegmento, setFilterSegmento] = useState('')
   const [filterAlvo, setFilterAlvo] = useState('')
+  const [filterStatusRel, setFilterStatusRel] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
   const [step, setStep] = useState(0)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -199,9 +211,12 @@ export default function EmpresaList() {
     const q = search.toLowerCase()
     return data.filter((e) => {
       const matchSearch = !q || e.razaoSocial.toLowerCase().includes(q) || e.nomeFantasia.toLowerCase().includes(q) || e.cnpj.includes(q)
-      return matchSearch && (!filterSegmento || e.segmentoId === Number(filterSegmento)) && (filterAlvo === '' ? true : filterAlvo === 'sim' ? e.empresaAlvo : !e.empresaAlvo)
+      return matchSearch
+        && (!filterSegmento || e.segmentoId === Number(filterSegmento))
+        && (filterAlvo === '' ? true : filterAlvo === 'sim' ? e.empresaAlvo : !e.empresaAlvo)
+        && (!filterStatusRel || e.statusRelacionamento === filterStatusRel)
     })
-  }, [data, search, filterSegmento, filterAlvo])
+  }, [data, search, filterSegmento, filterAlvo, filterStatusRel])
 
   const { page, setPage, totalPages, paginated } = usePagination(filtered, 10)
 
@@ -264,6 +279,10 @@ export default function EmpresaList() {
           <option value="sim">Alvo: Sim</option>
           <option value="nao">Alvo: Não</option>
         </select>
+        <select className="yeb-input" style={{ ...S, maxWidth: 180, padding: '7px 10px', fontSize: 13 }} value={filterStatusRel} onChange={(e) => { setFilterStatusRel(e.target.value); setPage(1) }}>
+          <option value="">Status de Relacionamento</option>
+          {Object.entries(statusRelMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
       </div>
 
       {/* Table */}
@@ -271,14 +290,14 @@ export default function EmpresaList() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              {['CNPJ', 'Empresa', 'Segmento', 'Tipo', 'Pipeline', 'Alvo', ''].map((h) => (
+              {['CNPJ', 'Empresa', 'Segmento', 'Tipo', 'Pipeline', 'Relacionamento', 'Alvo', ''].map((h) => (
                 <th key={h} scope="col" style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Nenhuma empresa encontrada</td></tr>
+              <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Nenhuma empresa encontrada</td></tr>
             ) : (
               paginated.map((empresa) => {
                 const segmento = segmentos.find((s) => s.id === empresa.segmentoId)
@@ -296,6 +315,16 @@ export default function EmpresaList() {
                     <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{segmento?.nome ?? '—'}</td>
                     <td style={{ padding: '11px 16px' }}><Badge variant="neutral">{empresa.tipo === 'matriz' ? 'Matriz' : 'Filial'}</Badge></td>
                     <td style={{ padding: '11px 16px' }}><Badge variant={pipeline.variant}>{pipeline.label}</Badge></td>
+                    <td style={{ padding: '11px 16px' }}>
+                      {(() => {
+                        const sr = statusRelMap[empresa.statusRelacionamento]
+                        return sr ? (
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: `${sr.color}22`, color: sr.color }}>
+                            {sr.label}
+                          </span>
+                        ) : '—'
+                      })()}
+                    </td>
                     <td style={{ padding: '11px 16px' }}><EmpresaAlvoBadge isAlvo={empresa.empresaAlvo} /></td>
                     <td style={{ padding: '11px 16px' }}>
                       <Dropdown>
