@@ -4,12 +4,13 @@ import {
   EllipsisHorizontalIcon, PlusIcon, ClockIcon,
   ChatBubbleLeftEllipsisIcon, CheckCircleIcon,
   PencilIcon, TrashIcon, XMarkIcon, CheckIcon,
+  MagnifyingGlassIcon, BuildingOffice2Icon,
 } from '@heroicons/react/24/outline'
 import { empresas, updateEmpresa } from '../data/empresas'
 import { getInteracoesByEmpresa } from '../data/interacoes'
 import { getContratosByEmpresa } from '../data/contratos'
 import { Badge } from '../components/ui/Badge'
-import type { PipelineStage } from '../types'
+import type { PipelineStage, Empresa } from '../types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Coluna = { key: string; label: string; color: string }
@@ -278,6 +279,153 @@ function ColunaHeader({
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Modal Seletor de Empresa ─────────────────────────────────────────────────
+function SeletorEmpresa({
+  colLabel,
+  colColor,
+  jaNaCarteira,
+  onSelect,
+  onClose,
+}: {
+  colLabel: string
+  colColor: string
+  jaNaCarteira: Set<number>
+  onSelect: (empresa: Empresa) => void
+  onClose: () => void
+}) {
+  const [busca, setBusca] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const disponiveis = useMemo(() => {
+    const q = busca.toLowerCase().trim()
+    return empresas.filter((e) => {
+      if (jaNaCarteira.has(e.id)) return false
+      if (!q) return true
+      return (
+        e.razaoSocial.toLowerCase().includes(q) ||
+        e.nomeFantasia?.toLowerCase().includes(q) ||
+        e.cnpj.includes(q)
+      )
+    })
+  }, [busca, jaNaCarteira])
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--color-bg-white)',
+          borderRadius: 16,
+          width: 480,
+          maxHeight: '70vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          overflow: 'hidden',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: colColor, display: 'inline-block' }} />
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                Adicionar à <span style={{ color: colColor }}>{colLabel}</span>
+              </span>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', padding: 4, borderRadius: 6 }}
+            >
+              <XMarkIcon style={{ width: 18, height: 18 }} />
+            </button>
+          </div>
+          {/* Busca */}
+          <div style={{ position: 'relative' }}>
+            <MagnifyingGlassIcon style={{ width: 16, height: 16, position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            <input
+              ref={inputRef}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome ou CNPJ..."
+              style={{
+                width: '100%', padding: '8px 12px 8px 34px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 8, fontSize: 14,
+                background: 'var(--color-bg-muted)',
+                color: 'var(--color-text-primary)',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Lista */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {disponiveis.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>
+              {busca ? 'Nenhuma empresa encontrada' : 'Todas as empresas já estão na carteira'}
+            </div>
+          ) : (
+            disponiveis.map((emp) => (
+              <button
+                key={emp.id}
+                onClick={() => onSelect(emp)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', padding: '12px 20px',
+                  background: 'none', border: 'none',
+                  borderBottom: '1px solid var(--color-border)',
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: 'var(--color-bg-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <BuildingOffice2Icon style={{ width: 18, height: 18, color: 'var(--color-text-muted)' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {emp.razaoSocial}
+                  </div>
+                  {emp.nomeFantasia && (
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{emp.nomeFantasia}</div>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}>{emp.cnpj}</div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div style={{ padding: '10px 20px', borderTop: '1px solid var(--color-border)', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          {disponiveis.length} empresa{disponiveis.length !== 1 ? 's' : ''} disponível{disponiveis.length !== 1 ? 'is' : ''}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Carteira() {
   const navigate = useNavigate()
   const [colunas, setColunas] = useState<Coluna[]>(COLUNAS_DEFAULT)
@@ -287,6 +435,7 @@ export default function Carteira() {
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [renamingKey, setRenamingKey] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [seletorColKey, setSeletorColKey] = useState<string | null>(null)
   const dragCounter = useRef<Record<string, number>>({})
 
   const todasEmpresas = useMemo(() =>
@@ -335,7 +484,19 @@ export default function Carteira() {
     setColunas((cols) => cols.filter((c) => c.key !== key))
   }
 
-  // ── Add ──
+  // ── Seletor ──
+  const jaNaCarteira = useMemo(() => new Set(data.map((e) => e.id)), [data])
+
+  const abrirSeletor = (colKey: string) => setSeletorColKey(colKey)
+
+  const adicionarEmpresa = (empresa: Empresa) => {
+    updateEmpresa(empresa.id, { favorita: true })
+    setTratativas((prev) => ({ ...prev, [empresa.id]: seletorColKey ?? colunas[0].key }))
+    setData((prev) => [...prev, { ...empresa, favorita: true }])
+    setSeletorColKey(null)
+  }
+
+  // ── Add coluna ──
   const addColuna = () => {
     if (colunas.length >= MAX_COLUNAS) return
     const usedColors = colunas.map((c) => c.color)
@@ -432,7 +593,7 @@ export default function Carteira() {
               {/* Add card */}
               <button
                 aria-label={`Adicionar empresa em ${col.label}`}
-                onClick={() => navigate('/cadastro/empresa')}
+                onClick={() => abrirSeletor(col.key)}
                 style={{
                   margin: '8px', padding: '8px 12px', background: 'transparent',
                   border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13,
@@ -481,6 +642,20 @@ export default function Carteira() {
           </button>
         )}
       </div>
+
+      {/* Modal seletor */}
+      {seletorColKey && (() => {
+        const col = colunas.find((c) => c.key === seletorColKey)!
+        return (
+          <SeletorEmpresa
+            colLabel={col.label}
+            colColor={col.color}
+            jaNaCarteira={jaNaCarteira}
+            onSelect={adicionarEmpresa}
+            onClose={() => setSeletorColKey(null)}
+          />
+        )
+      })()}
     </div>
   )
 }
