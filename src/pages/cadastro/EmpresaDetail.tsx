@@ -6,7 +6,7 @@ import { segmentos } from '../../data/segmentos'
 import { getUsuario, usuarios } from '../../data/usuarios'
 import { getProfissionaisByEmpresa } from '../../data/profissionais'
 import { getInteracoesByEmpresa, addInteracao } from '../../data/interacoes'
-import { getContratosByEmpresa } from '../../data/contratos'
+import { getContratosByEmpresa, addContrato, getNextNumero } from '../../data/contratos'
 import { getProduto, produtos } from '../../data/produtos'
 import { Badge } from '../../components/ui/Badge'
 import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge } from '../../components/ui/StatusBadge'
@@ -127,6 +127,22 @@ export default function EmpresaDetail() {
   // Interação selecionada para leitura
   const [interacaoSelecionada, setInteracaoSelecionada] = useState<typeof interacoesLocal[0] | null>(null)
 
+  // Contratos
+  const [contratosLocal, setContratosLocal] = useState(() => getContratosByEmpresa(Number(id)))
+  const [modalContrato, setModalContrato] = useState(false)
+  const [contratoStep, setContratoStep] = useState(0)
+  const [contratoForm, setContratoForm] = useState({
+    produtos: [] as number[],
+    valorTotal: '',
+    valorMedioMensal: '',
+    dataInicio: '',
+    dataVencimento: '',
+    status: 'ativo' as 'ativo' | 'vencendo' | 'vencido' | 'cancelado',
+    regularizacao: 'regular' as 'regular' | 'pendente',
+    criadoPor: 1,
+  })
+  const setCF = (k: string, v: unknown) => setContratoForm((f) => ({ ...f, [k]: v }))
+
   // Interações — filtros
   const [filtroTipo, setFiltroTipo] = useState<string>('')
   const [filtroEfetividade, setFiltroEfetividade] = useState<string>('')
@@ -187,6 +203,34 @@ export default function EmpresaDetail() {
   const limparFiltros = () => {
     setFiltroTipo(''); setFiltroEfetividade(''); setFiltroProduto(''); setFiltroUsuario('')
   }
+
+  const handleSaveContrato = () => {
+    if (contratoForm.produtos.length === 0 || !contratoForm.dataInicio || !contratoForm.dataVencimento) return
+    const novo = {
+      id: Date.now(),
+      numero: getNextNumero(),
+      empresaId: empresa.id,
+      status: contratoForm.status,
+      regularizacao: contratoForm.regularizacao,
+      valorTotal: Number(contratoForm.valorTotal) || 0,
+      valorMedioMensal: Number(contratoForm.valorMedioMensal) || 0,
+      produtos: contratoForm.produtos,
+      dataInicio: contratoForm.dataInicio,
+      dataVencimento: contratoForm.dataVencimento,
+      criadoPor: contratoForm.criadoPor,
+    }
+    addContrato(novo)
+    setContratosLocal((prev) => [...prev, novo])
+    setModalContrato(false)
+    setContratoStep(0)
+    setContratoForm({ produtos: [], valorTotal: '', valorMedioMensal: '', dataInicio: '', dataVencimento: '', status: 'ativo', regularizacao: 'regular', criadoPor: 1 })
+  }
+
+  const toggleProduto = (id: number) =>
+    setCF('produtos', contratoForm.produtos.includes(id)
+      ? contratoForm.produtos.filter((p) => p !== id)
+      : [...contratoForm.produtos, id]
+    )
 
   const setFI = (field: string, value: unknown) => setFormInteracao((f) => ({ ...f, [field]: value }))
 
@@ -528,10 +572,15 @@ export default function EmpresaDetail() {
 
       {activeTab === 3 && (
         <div role="tabpanel" id="tabpanel-3" aria-labelledby="tab-3" style={cardStyle}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Contratos ({contratos.length})
-          </h3>
-          {contratos.length === 0 ? (
+          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+              Contratos ({contratosLocal.length})
+            </h3>
+            <Button variant="primary" onPress={() => { setContratoStep(0); setModalContrato(true) }}>
+              + Novo Contrato
+            </Button>
+          </div>
+          {contratosLocal.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
               Nenhum contrato encontrado.
             </p>
@@ -545,7 +594,7 @@ export default function EmpresaDetail() {
                 </tr>
               </thead>
               <tbody>
-                {contratos.map((contrato) => (
+                {contratosLocal.map((contrato) => (
                   <tr key={contrato.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                     <td style={{ padding: '12px', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>#{contrato.numero}</td>
                     <td style={{ padding: '12px' }}><ContractStatusBadge status={contrato.status} /></td>
@@ -567,6 +616,149 @@ export default function EmpresaDetail() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Modal Novo Contrato */}
+      {modalContrato && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setModalContrato(false)}>
+          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding: '20px 24px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Novo Contrato</h2>
+                <button onClick={() => setModalContrato(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-text-muted)', lineHeight: 1 }}>✕</button>
+              </div>
+              {/* Steps */}
+              <div style={{ display: 'flex', gap: 0 }}>
+                {['Produtos', 'Valores e Datas', 'Status'].map((step, i) => (
+                  <div key={step} style={{ flex: 1, textAlign: 'center', paddingBottom: 10, fontSize: 13, fontWeight: contratoStep === i ? 700 : 500,
+                    color: contratoStep === i ? 'var(--color-brand-primary)' : contratoStep > i ? 'var(--color-success)' : 'var(--color-text-muted)',
+                    borderBottom: `2px solid ${contratoStep === i ? 'var(--color-brand-primary)' : contratoStep > i ? 'var(--color-success)' : 'var(--color-border)'}` }}>
+                    {contratoStep > i ? '✓ ' : ''}{step}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px', minHeight: 200 }}>
+
+              {/* Step 0 — Produtos */}
+              {contratoStep === 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+                    Selecione todos os produtos antes de preencher os dados. Adicionar ou remover os produtos vai limpar os dados abaixo.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {produtos.map((p) => {
+                      const sel = contratoForm.produtos.includes(p.id)
+                      return (
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: `1px solid ${sel ? 'var(--color-brand-primary)' : 'var(--color-border)'}`, borderRadius: 10, cursor: 'pointer', background: sel ? 'rgba(29,78,216,0.05)' : 'transparent', transition: 'all 0.12s' }}>
+                          <input type="checkbox" checked={sel} onChange={() => {
+                            setCF('valorTotal', '')
+                            setCF('valorMedioMensal', '')
+                            toggleProduto(p.id)
+                          }} style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.nome}</div>
+                            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{p.categoria}</div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {contratoForm.produtos.length === 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--color-danger)', margin: 0 }}>Selecione pelo menos um produto.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 1 — Valores e Datas */}
+              {contratoStep === 1 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Valor Total (R$)" htmlFor="c-valor-total">
+                      <input id="c-valor-total" className="yeb-input" style={S} type="number" min="0" placeholder="0,00" value={contratoForm.valorTotal} onChange={(e) => setCF('valorTotal', e.target.value)} />
+                    </Field>
+                    <Field label="Valor Médio Mensal (R$)" htmlFor="c-valor-mensal">
+                      <input id="c-valor-mensal" className="yeb-input" style={S} type="number" min="0" placeholder="0,00" value={contratoForm.valorMedioMensal} onChange={(e) => setCF('valorMedioMensal', e.target.value)} />
+                    </Field>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Data de Início" required htmlFor="c-inicio">
+                      <input id="c-inicio" aria-required="true" className="yeb-input" style={S} type="date" value={contratoForm.dataInicio} onChange={(e) => setCF('dataInicio', e.target.value)} />
+                    </Field>
+                    <Field label="Data de Vencimento" required htmlFor="c-vencimento">
+                      <input id="c-vencimento" aria-required="true" className="yeb-input" style={S} type="date" value={contratoForm.dataVencimento} onChange={(e) => setCF('dataVencimento', e.target.value)} />
+                    </Field>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+                    Produtos selecionados: <strong>{contratoForm.produtos.map((pid) => getProduto(pid)?.nome).join(', ')}</strong>
+                  </p>
+                </div>
+              )}
+
+              {/* Step 2 — Status */}
+              {contratoStep === 2 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Status do Contrato" required htmlFor="c-status">
+                      <select id="c-status" aria-required="true" className="yeb-input" style={S} value={contratoForm.status} onChange={(e) => setCF('status', e.target.value)}>
+                        <option value="ativo">Ativo</option>
+                        <option value="vencendo">Vencendo</option>
+                        <option value="vencido">Vencido</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    </Field>
+                    <Field label="Regularização" required htmlFor="c-reg">
+                      <select id="c-reg" aria-required="true" className="yeb-input" style={S} value={contratoForm.regularizacao} onChange={(e) => setCF('regularizacao', e.target.value)}>
+                        <option value="regular">Regular</option>
+                        <option value="pendente">Pendente</option>
+                      </select>
+                    </Field>
+                  </div>
+                  <Field label="Responsável" htmlFor="c-responsavel">
+                    <select id="c-responsavel" className="yeb-input" style={S} value={contratoForm.criadoPor} onChange={(e) => setCF('criadoPor', Number(e.target.value))}>
+                      {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                    </select>
+                  </Field>
+                  {/* Resumo */}
+                  <div style={{ background: 'var(--color-bg-muted)', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div><strong>Produtos:</strong> {contratoForm.produtos.map((pid) => getProduto(pid)?.nome).join(', ')}</div>
+                    <div><strong>Valor Total:</strong> {Number(contratoForm.valorTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    <div><strong>Início → Vencimento:</strong> {contratoForm.dataInicio} → {contratoForm.dataVencimento}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <Button variant="ghost" onPress={() => setModalContrato(false)}>Cancelar</Button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {contratoStep > 0 && (
+                  <Button variant="outline" onPress={() => setContratoStep((s) => s - 1)}>Anterior</Button>
+                )}
+                {contratoStep < 2 ? (
+                  <Button variant="primary"
+                    isDisabled={contratoStep === 0 && contratoForm.produtos.length === 0}
+                    onPress={() => setContratoStep((s) => s + 1)}>
+                    Próximo
+                  </Button>
+                ) : (
+                  <Button variant="primary"
+                    isDisabled={!contratoForm.dataInicio || !contratoForm.dataVencimento}
+                    onPress={handleSaveContrato}>
+                    Finalizar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

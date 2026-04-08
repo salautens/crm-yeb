@@ -11,3 +11,7 @@ export const contratos: Contrato[] = [
 export const getContratosByEmpresa = (empresaId: number) =>
   contratos.filter((c) => c.empresaId === empresaId)
 
+export const addContrato = (c: Contrato) => contratos.push(c)
+
+export const getNextNumero = () => Math.max(...contratos.map((c) => c.numero), 0) + 1
+
