@@ -15,3 +15,13 @@ export const profissionais: Profissional[] = [
 
 export const getProfissionaisByEmpresa = (empresaId: number) =>
   profissionais.filter((p) => p.empresaId === empresaId)
+
+export const addProfissional = (p: Profissional) => profissionais.push(p)
+
+export const updateProfissional = (updated: Profissional) => {
+  const idx = profissionais.findIndex((p) => p.id === updated.id)
+  if (idx !== -1) profissionais[idx] = updated
+}
+
+export const getNextProfId = () =>
+  Math.max(...profissionais.map((p) => p.id), 0) + 1

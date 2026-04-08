@@ -4,13 +4,13 @@ import { Button, Modal, useOverlayState } from '@heroui/react'
 import { getEmpresa } from '../../data/empresas'
 import { segmentos } from '../../data/segmentos'
 import { getUsuario, usuarios } from '../../data/usuarios'
-import { getProfissionaisByEmpresa } from '../../data/profissionais'
+import { getProfissionaisByEmpresa, addProfissional, updateProfissional, getNextProfId } from '../../data/profissionais'
 import { getInteracoesByEmpresa, addInteracao } from '../../data/interacoes'
 import { getContratosByEmpresa, addContrato, getNextNumero } from '../../data/contratos'
 import { getProduto, produtos } from '../../data/produtos'
 import { Badge } from '../../components/ui/Badge'
 import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge } from '../../components/ui/StatusBadge'
-import type { PipelineStage, TipoInteracao, StatusRelacionamento } from '../../types'
+import type { PipelineStage, TipoInteracao, StatusRelacionamento, Profissional } from '../../types'
 
 const DESCRICAO_MAX = 5000
 
@@ -36,6 +36,16 @@ function Field({ label, required, children, htmlFor }: { label: string; required
       {children}
     </div>
   )
+}
+
+const EMPTY_PROF = {
+  nome: '',
+  cargo: '',
+  email: '',
+  telefone: '',
+  linkedin: '',
+  parentId: undefined as number | undefined,
+  ativo: true,
 }
 
 const EMPTY_INTERACAO = {
@@ -120,9 +130,20 @@ export default function EmpresaDetail() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
-  // Profissionais — sort + busca
+  // Profissionais — lista local + sort + busca
+  const [profissionaisLocal, setProfissionaisLocal] = useState(() => getProfissionaisByEmpresa(Number(id)))
   const [profBusca, setProfBusca] = useState('')
   const [profSort, setProfSort] = useState<{ field: 'nome' | 'cargo'; dir: 'asc' | 'desc' }>({ field: 'nome', dir: 'asc' })
+
+  // Profissionais — modal visualização/edição
+  const [profSelecionado, setProfSelecionado] = useState<Profissional | null>(null)
+  const [profModoEdicao, setProfModoEdicao] = useState(false)
+  const [profEditForm, setProfEditForm] = useState(EMPTY_PROF)
+
+  // Profissionais — modal novo
+  const [modalNovoProf, setModalNovoProf] = useState(false)
+  const [novoProfForm, setNovoProfForm] = useState(EMPTY_PROF)
+  const [novoProfInfosAbertas, setNovoProfInfosAbertas] = useState(false)
 
   // Interação selecionada para leitura
   const [interacaoSelecionada, setInteracaoSelecionada] = useState<typeof interacoesLocal[0] | null>(null)
@@ -170,20 +191,19 @@ export default function EmpresaDetail() {
 
   const segmento = segmentos.find((s) => s.id === empresa.segmentoId)
   const responsavel = getUsuario(empresa.usuarioId)
-  const profissionais = getProfissionaisByEmpresa(empresa.id)
   const contratos = getContratosByEmpresa(empresa.id)
   const pipeline = pipelineMap[empresa.pipeline]
 
   const profissionaisFiltrados = useMemo(() => {
     const q = profBusca.toLowerCase()
-    return profissionais
+    return profissionaisLocal
       .filter((p) => !q || p.nome.toLowerCase().includes(q) || p.cargo.toLowerCase().includes(q))
       .sort((a, b) => {
         const va = a[profSort.field].toLowerCase()
         const vb = b[profSort.field].toLowerCase()
         return profSort.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
       })
-  }, [profissionais, profBusca, profSort])
+  }, [profissionaisLocal, profBusca, profSort])
 
   const toggleSort = (field: 'nome' | 'cargo') =>
     setProfSort((s) => ({ field, dir: s.field === field && s.dir === 'asc' ? 'desc' : 'asc' }))
@@ -231,6 +251,44 @@ export default function EmpresaDetail() {
       ? contratoForm.produtos.filter((p) => p !== id)
       : [...contratoForm.produtos, id]
     )
+
+  const handleSaveNovoProfissional = () => {
+    if (!novoProfForm.nome || !novoProfForm.cargo) return
+    const novo: Profissional = {
+      id: getNextProfId(),
+      empresaId: empresa.id,
+      nome: novoProfForm.nome,
+      cargo: novoProfForm.cargo,
+      email: novoProfForm.email,
+      telefone: novoProfForm.telefone,
+      linkedin: novoProfForm.linkedin || undefined,
+      parentId: novoProfForm.parentId,
+      ativo: novoProfForm.ativo,
+    }
+    addProfissional(novo)
+    setProfissionaisLocal((prev) => [...prev, novo])
+    setModalNovoProf(false)
+    setNovoProfForm(EMPTY_PROF)
+    setNovoProfInfosAbertas(false)
+  }
+
+  const handleSaveProfEdit = () => {
+    if (!profSelecionado) return
+    const updated: Profissional = {
+      ...profSelecionado,
+      nome: profEditForm.nome,
+      cargo: profEditForm.cargo,
+      email: profEditForm.email,
+      telefone: profEditForm.telefone,
+      linkedin: profEditForm.linkedin || undefined,
+      parentId: profEditForm.parentId,
+      ativo: profEditForm.ativo,
+    }
+    updateProfissional(updated)
+    setProfissionaisLocal((prev) => prev.map((p) => p.id === updated.id ? updated : p))
+    setProfSelecionado(updated)
+    setProfModoEdicao(false)
+  }
 
   const setFI = (field: string, value: unknown) => setFormInteracao((f) => ({ ...f, [field]: value }))
 
@@ -368,7 +426,7 @@ export default function EmpresaDetail() {
               {[
                 { label: 'Interações', value: interacoesLocal.length },
                 { label: 'Contratos', value: contratos.length },
-                { label: 'Profissionais', value: profissionais.length },
+                { label: 'Profissionais', value: profissionaisLocal.length },
                 { label: 'Pipeline', value: pipeline.label },
               ].map((kpi) => (
                 <div key={kpi.label} style={{ textAlign: 'center', padding: 16, background: 'var(--color-bg-muted)', borderRadius: 'var(--radius-md)' }}>
@@ -385,16 +443,21 @@ export default function EmpresaDetail() {
         <div role="tabpanel" id="tabpanel-1" aria-labelledby="tab-1" style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-              Profissionais ({profissionaisFiltrados.length}/{profissionais.length})
+              Profissionais ({profissionaisFiltrados.length}/{profissionaisLocal.length})
             </h3>
-            <input
-              value={profBusca}
-              onChange={(e) => setProfBusca(e.target.value)}
-              placeholder="Buscar por nome ou cargo…"
-              style={{ ...S, width: 240, padding: '7px 12px', fontSize: 13 }}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                value={profBusca}
+                onChange={(e) => setProfBusca(e.target.value)}
+                placeholder="Buscar por nome ou cargo…"
+                style={{ ...S, width: 220, padding: '7px 12px', fontSize: 13 }}
+              />
+              <Button variant="primary" onPress={() => { setNovoProfForm(EMPTY_PROF); setNovoProfInfosAbertas(false); setModalNovoProf(true) }}>
+                + Novo Profissional
+              </Button>
+            </div>
           </div>
-          {profissionais.length === 0 ? (
+          {profissionaisLocal.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center', padding: 32 }}>
               Nenhum profissional cadastrado.
             </p>
@@ -427,7 +490,11 @@ export default function EmpresaDetail() {
               </thead>
               <tbody>
                 {profissionaisFiltrados.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <tr
+                    key={p.id}
+                    style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
+                    onClick={() => { setProfSelecionado(p); setProfModoEdicao(false) }}
+                  >
                     <td style={{ padding: '12px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>
                       {p.parentId && <span style={{ color: 'var(--color-text-muted)', marginRight: 6 }}>↳</span>}
                       {p.nome}
@@ -757,6 +824,189 @@ export default function EmpresaDetail() {
                   </Button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Visualização/Edição de Profissional */}
+      {profSelecionado && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => { setProfSelecionado(null); setProfModoEdicao(false) }}
+        >
+          <div
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', margin: '0 0 4px' }}>
+                  {profModoEdicao ? 'Editar Profissional' : profSelecionado.nome}
+                </h2>
+                {!profModoEdicao && (
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{profSelecionado.cargo}</span>
+                )}
+              </div>
+              <button onClick={() => { setProfSelecionado(null); setProfModoEdicao(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', fontSize: 16, flexShrink: 0 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {!profModoEdicao ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {[
+                      { label: 'E-mail', value: profSelecionado.email },
+                      { label: 'Telefone', value: profSelecionado.telefone },
+                      { label: 'LinkedIn', value: profSelecionado.linkedin },
+                      { label: 'Superior', value: profissionaisLocal.find((p) => p.id === profSelecionado.parentId)?.nome },
+                    ].map(({ label, value }) => (
+                      <div key={label} style={{ background: 'var(--color-bg-muted)', borderRadius: 8, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{value || '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Status:</span>
+                    <Badge variant={profSelecionado.ativo ? 'active' : 'inactive'}>{profSelecionado.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Nome" required htmlFor="pe-nome">
+                      <input id="pe-nome" style={S} autoFocus value={profEditForm.nome} onChange={(e) => setProfEditForm((f) => ({ ...f, nome: e.target.value }))} />
+                    </Field>
+                    <Field label="Cargo" required htmlFor="pe-cargo">
+                      <input id="pe-cargo" style={S} value={profEditForm.cargo} onChange={(e) => setProfEditForm((f) => ({ ...f, cargo: e.target.value }))} />
+                    </Field>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="E-mail" htmlFor="pe-email">
+                      <input id="pe-email" type="email" style={S} value={profEditForm.email} onChange={(e) => setProfEditForm((f) => ({ ...f, email: e.target.value }))} />
+                    </Field>
+                    <Field label="Telefone" htmlFor="pe-tel">
+                      <input id="pe-tel" type="tel" style={S} value={profEditForm.telefone} onChange={(e) => setProfEditForm((f) => ({ ...f, telefone: e.target.value }))} />
+                    </Field>
+                  </div>
+                  <Field label="LinkedIn" htmlFor="pe-linkedin">
+                    <input id="pe-linkedin" style={S} placeholder="linkedin.com/in/..." value={profEditForm.linkedin} onChange={(e) => setProfEditForm((f) => ({ ...f, linkedin: e.target.value }))} />
+                  </Field>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Superior hierárquico" htmlFor="pe-superior">
+                      <select id="pe-superior" style={S} value={profEditForm.parentId ?? ''} onChange={(e) => setProfEditForm((f) => ({ ...f, parentId: e.target.value ? Number(e.target.value) : undefined }))}>
+                        <option value="">Nenhum</option>
+                        {profissionaisLocal.filter((p) => p.id !== profSelecionado.id).map((p) => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Status" htmlFor="pe-status">
+                      <select id="pe-status" style={S} value={profEditForm.ativo ? 'ativo' : 'inativo'} onChange={(e) => setProfEditForm((f) => ({ ...f, ativo: e.target.value === 'ativo' }))}>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '12px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {profModoEdicao ? (
+                <>
+                  <Button variant="ghost" onPress={() => setProfModoEdicao(false)}>Cancelar</Button>
+                  <Button variant="primary" isDisabled={!profEditForm.nome || !profEditForm.cargo} onPress={handleSaveProfEdit}>Salvar alterações</Button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => { setProfSelecionado(null) }} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Fechar</button>
+                  <Button variant="outline" onPress={() => { setProfEditForm({ nome: profSelecionado.nome, cargo: profSelecionado.cargo, email: profSelecionado.email || '', telefone: profSelecionado.telefone || '', linkedin: profSelecionado.linkedin || '', parentId: profSelecionado.parentId, ativo: profSelecionado.ativo }); setProfModoEdicao(true) }}>Editar</Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Novo Profissional */}
+      {modalNovoProf && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setModalNovoProf(false)}
+        >
+          <div
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Novo Profissional</h2>
+              <button onClick={() => setModalNovoProf(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', fontSize: 16 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <Field label="Nome" required htmlFor="np-nome">
+                  <input id="np-nome" style={S} autoFocus placeholder="Nome completo" value={novoProfForm.nome} onChange={(e) => setNovoProfForm((f) => ({ ...f, nome: e.target.value }))} />
+                </Field>
+                <Field label="Cargo" required htmlFor="np-cargo">
+                  <input id="np-cargo" style={S} placeholder="Ex: Diretor de Suprimentos" value={novoProfForm.cargo} onChange={(e) => setNovoProfForm((f) => ({ ...f, cargo: e.target.value }))} />
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <Field label="E-mail" htmlFor="np-email">
+                  <input id="np-email" type="email" style={S} placeholder="email@empresa.com.br" value={novoProfForm.email} onChange={(e) => setNovoProfForm((f) => ({ ...f, email: e.target.value }))} />
+                </Field>
+                <Field label="Telefone" htmlFor="np-tel">
+                  <input id="np-tel" type="tel" style={S} placeholder="(00) 00000-0000" value={novoProfForm.telefone} onChange={(e) => setNovoProfForm((f) => ({ ...f, telefone: e.target.value }))} />
+                </Field>
+              </div>
+
+              {/* Informações adicionais — colapsável */}
+              <button
+                type="button"
+                onClick={() => setNovoProfInfosAbertas((v) => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--color-brand-primary)', fontWeight: 500, padding: '4px 0', alignSelf: 'flex-start' }}
+              >
+                <span style={{ fontSize: 10, transition: 'transform 0.2s', display: 'inline-block', transform: novoProfInfosAbertas ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                Informações adicionais
+              </button>
+
+              {novoProfInfosAbertas && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 2 }}>
+                  <Field label="LinkedIn" htmlFor="np-linkedin">
+                    <input id="np-linkedin" style={S} placeholder="linkedin.com/in/..." value={novoProfForm.linkedin} onChange={(e) => setNovoProfForm((f) => ({ ...f, linkedin: e.target.value }))} />
+                  </Field>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <Field label="Superior hierárquico" htmlFor="np-superior">
+                      <select id="np-superior" style={S} value={novoProfForm.parentId ?? ''} onChange={(e) => setNovoProfForm((f) => ({ ...f, parentId: e.target.value ? Number(e.target.value) : undefined }))}>
+                        <option value="">Nenhum</option>
+                        {profissionaisLocal.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Status" htmlFor="np-status">
+                      <select id="np-status" style={S} value={novoProfForm.ativo ? 'ativo' : 'inativo'} onChange={(e) => setNovoProfForm((f) => ({ ...f, ativo: e.target.value === 'ativo' }))}>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={() => setModalNovoProf(false)} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Cancelar</button>
+              <Button variant="primary" isDisabled={!novoProfForm.nome || !novoProfForm.cargo} onPress={handleSaveNovoProfissional}>
+                Cadastrar Profissional
+              </Button>
             </div>
           </div>
         </div>
