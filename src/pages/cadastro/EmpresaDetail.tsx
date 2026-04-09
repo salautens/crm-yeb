@@ -774,7 +774,7 @@ export default function EmpresaDetail() {
       {modalContrato && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={() => setModalContrato(false)}>
-          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}>
 
             {/* Header */}
@@ -920,7 +920,7 @@ export default function EmpresaDetail() {
           onClick={() => { setProfSelecionado(null); setProfModoEdicao(false) }}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1023,7 +1023,7 @@ export default function EmpresaDetail() {
           onClick={() => setModalNovoProf(false)}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1101,7 +1101,7 @@ export default function EmpresaDetail() {
           onClick={() => setInteracaoSelecionada(null)}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 720, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
