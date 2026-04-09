@@ -4,6 +4,7 @@ import { Button, Modal, useOverlayState } from '@heroui/react'
 import { empresas } from '../data/empresas'
 import { segmentos } from '../data/segmentos'
 import { usuarios } from '../data/usuarios'
+import { profissionais } from '../data/profissionais'
 import { usePagination } from '../hooks/usePagination'
 import { TablePagination, EmpresaAlvoBadge } from '../components/ui'
 import { Badge } from '../components/ui/Badge'
@@ -29,6 +30,25 @@ const statusRelMap: Record<StatusRelacionamento, { label: string; color: string 
   parceiro:      { label: 'Parceiro',      color: '#8B5CF6' },
   nao_definido:  { label: 'Não Definido',  color: '#94A3B8' },
 }
+
+const COLUNAS = [
+  { grupo: 'Empresa', id: 'razaoSocial',    label: 'Razão Social',             default: true  },
+  { grupo: 'Empresa', id: 'nomeFantasia',   label: 'Nome Fantasia',             default: true  },
+  { grupo: 'Empresa', id: 'cnpj',           label: 'CNPJ',                      default: true  },
+  { grupo: 'Empresa', id: 'segmento',       label: 'Segmento',                  default: true  },
+  { grupo: 'Empresa', id: 'cidade',         label: 'Cidade',                    default: false },
+  { grupo: 'Empresa', id: 'uf',             label: 'UF',                        default: true  },
+  { grupo: 'Empresa', id: 'pipeline',       label: 'Pipeline',                  default: true  },
+  { grupo: 'Empresa', id: 'relacionamento', label: 'Status de Relacionamento',  default: true  },
+  { grupo: 'Empresa', id: 'alvo',           label: 'Empresa Alvo',              default: false },
+  { grupo: 'Empresa', id: 'responsavel',    label: 'Responsável',               default: true  },
+  { grupo: 'Contato', id: 'cNome',          label: 'Nome do Contato',           default: false },
+  { grupo: 'Contato', id: 'cCargo',         label: 'Cargo',                     default: false },
+  { grupo: 'Contato', id: 'cEmail',         label: 'E-mail',                    default: true  },
+  { grupo: 'Contato', id: 'cTelefone',      label: 'Telefone',                  default: true  },
+] as const
+
+type ColId = typeof COLUNAS[number]['id']
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -57,6 +77,12 @@ export default function BaseDados() {
   ])
   const [nomeFiltro, setNomeFiltro] = useState('')
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
+  const [modalExport, setModalExport] = useState(false)
+  const [exportarSelecionadas, setExportarSelecionadas] = useState(false)
+  const [colunasAtivas, setColunasAtivas] = useState<Set<ColId>>(
+    new Set(COLUNAS.filter((c) => c.default).map((c) => c.id))
+  )
+  const [nomeArquivo, setNomeArquivo] = useState('base-yeb')
   const saveState = useOverlayState()
 
   const filtered = useMemo(() => {
@@ -119,30 +145,45 @@ export default function BaseDados() {
     saveState.close()
   }
 
-  const buildCsv = (lista: typeof filtered) => {
-    const headers = ['CNPJ', 'Razão Social', 'Nome Fantasia', 'Segmento', 'Pipeline', 'Relacionamento', 'Alvo', 'Cidade', 'UF']
-    const rows = lista.map((e) => [
-      e.cnpj, e.razaoSocial, e.nomeFantasia,
-      segmentos.find((s) => s.id === e.segmentoId)?.nome ?? '',
-      pipelineMap[e.pipeline].label,
-      statusRelMap[e.statusRelacionamento]?.label ?? '',
-      e.empresaAlvo ? 'Sim' : 'Não',
-      e.cidade ?? '', e.uf ?? '',
-    ])
-    return [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')
+  const abrirModalExport = (apenasSel: boolean) => {
+    setExportarSelecionadas(apenasSel)
+    setModalExport(true)
   }
 
-  const handleExport = (apenasSelecao = false) => {
-    const lista = apenasSelecao && selecionados.size > 0
+  const handleExport = () => {
+    const lista = exportarSelecionadas && selecionados.size > 0
       ? filtered.filter((e) => selecionados.has(e.id))
       : filtered
-    const csv = buildCsv(lista)
+    const cols = COLUNAS.filter((c) => colunasAtivas.has(c.id))
+    const headers = cols.map((c) => c.label)
+    const rows = lista.map((e) => {
+      const contato = profissionais.find((p) => p.empresaId === e.id && p.ativo)
+      const val: Record<ColId, string> = {
+        razaoSocial:    e.razaoSocial,
+        nomeFantasia:   e.nomeFantasia,
+        cnpj:           e.cnpj,
+        segmento:       segmentos.find((s) => s.id === e.segmentoId)?.nome ?? '',
+        cidade:         e.cidade ?? '',
+        uf:             e.uf ?? '',
+        pipeline:       pipelineMap[e.pipeline].label,
+        relacionamento: statusRelMap[e.statusRelacionamento]?.label ?? '',
+        alvo:           e.empresaAlvo ? 'Sim' : 'Não',
+        responsavel:    usuarios.find((u) => u.id === e.usuarioId)?.nome ?? '',
+        cNome:          contato?.nome ?? '',
+        cCargo:         contato?.cargo ?? '',
+        cEmail:         contato?.email ?? '',
+        cTelefone:      contato?.telefone ?? '',
+      }
+      return cols.map((c) => val[c.id])
+    })
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    const sufixo = apenasSelecao && selecionados.size > 0 ? `_${selecionados.size}-selecionadas` : `_${lista.length}-empresas`
-    a.href = url; a.download = `base-yeb${sufixo}.csv`; a.click()
+    const sufixo = exportarSelecionadas && selecionados.size > 0 ? `_${selecionados.size}-sel` : `_${lista.length}-emp`
+    a.href = url; a.download = `${nomeArquivo || 'base-yeb'}${sufixo}.csv`; a.click()
     URL.revokeObjectURL(url)
+    setModalExport(false)
   }
 
   return (
@@ -194,7 +235,7 @@ export default function BaseDados() {
             <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Base de Dados</h1>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>{filtered.length} empresas encontradas</p>
           </div>
-          <Button variant="outline" onPress={() => handleExport(false)} style={{ fontSize: 13 }}>↓ Exportar CSV</Button>
+          <Button variant="outline" onPress={() => abrirModalExport(false)} style={{ fontSize: 13 }}>↓ Exportar CSV</Button>
         </div>
 
         {/* Barra de seleção */}
@@ -205,7 +246,7 @@ export default function BaseDados() {
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="ghost" onPress={limparSelecao} style={{ fontSize: 12 }}>Limpar seleção</Button>
-              <Button variant="primary" onPress={() => handleExport(true)} style={{ fontSize: 12 }}>↓ Exportar selecionadas</Button>
+              <Button variant="primary" onPress={() => abrirModalExport(true)} style={{ fontSize: 12 }}>↓ Exportar selecionadas</Button>
             </div>
           </div>
         )}
@@ -289,6 +330,104 @@ export default function BaseDados() {
           <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>
+
+      {/* Modal Exportar CSV */}
+      {modalExport && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setModalExport(false)}
+        >
+          <div
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Exportar CSV</h2>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 3 }}>
+                  {exportarSelecionadas && selecionados.size > 0
+                    ? `${selecionados.size} empresa${selecionados.size > 1 ? 's' : ''} selecionada${selecionados.size > 1 ? 's' : ''}`
+                    : `${filtered.length} empresa${filtered.length !== 1 ? 's' : ''} (filtro ativo)`}
+                </p>
+              </div>
+              <button onClick={() => setModalExport(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-muted)', padding: 6, borderRadius: 8 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Nome do arquivo */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' }}>Nome do arquivo</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                  <input
+                    value={nomeArquivo}
+                    onChange={(e) => setNomeArquivo(e.target.value)}
+                    style={{ ...inputStyle, borderRadius: '6px 0 0 6px', flex: 1 }}
+                    placeholder="base-yeb"
+                  />
+                  <span style={{ padding: '7px 10px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderLeft: 'none', borderRadius: '0 6px 6px 0', fontSize: 13, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                    _N-empresas.csv
+                  </span>
+                </div>
+              </div>
+
+              {/* Colunas por grupo */}
+              {(['Empresa', 'Contato'] as const).map((grupo) => (
+                <div key={grupo}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {grupo === 'Contato' ? 'Contato Principal' : 'Dados da Empresa'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const ids = COLUNAS.filter((c) => c.grupo === grupo).map((c) => c.id)
+                        const allOn = ids.every((id) => colunasAtivas.has(id))
+                        setColunasAtivas((prev) => {
+                          const next = new Set(prev)
+                          ids.forEach((id) => allOn ? next.delete(id) : next.add(id))
+                          return next
+                        })
+                      }}
+                      style={{ fontSize: 11, color: 'var(--color-brand-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      {COLUNAS.filter((c) => c.grupo === grupo).every((c) => colunasAtivas.has(c.id)) ? 'Desmarcar todas' : 'Marcar todas'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {COLUNAS.filter((c) => c.grupo === grupo).map((col) => (
+                      <label key={col.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1px solid ${colunasAtivas.has(col.id) ? 'var(--color-brand-primary)' : 'var(--color-border)'}`, background: colunasAtivas.has(col.id) ? 'rgba(30,74,159,0.05)' : 'transparent', cursor: 'pointer', fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          checked={colunasAtivas.has(col.id)}
+                          onChange={() => setColunasAtivas((prev) => {
+                            const next = new Set(prev)
+                            next.has(col.id) ? next.delete(col.id) : next.add(col.id)
+                            return next
+                          })}
+                          style={{ accentColor: 'var(--color-brand-primary)', width: 14, height: 14, flexShrink: 0 }}
+                        />
+                        <span style={{ color: colunasAtivas.has(col.id) ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{colunasAtivas.size} coluna{colunasAtivas.size !== 1 ? 's' : ''} selecionada{colunasAtivas.size !== 1 ? 's' : ''}</span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Button variant="ghost" onPress={() => setModalExport(false)}>Cancelar</Button>
+                <Button variant="primary" isDisabled={colunasAtivas.size === 0} onPress={handleExport}>
+                  ↓ Exportar {exportarSelecionadas && selecionados.size > 0 ? `${selecionados.size} empresa${selecionados.size > 1 ? 's' : ''}` : `${filtered.length} empresa${filtered.length !== 1 ? 's' : ''}`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Save filter modal */}
       <Modal isOpen={saveState.isOpen} onOpenChange={saveState.setOpen}>
