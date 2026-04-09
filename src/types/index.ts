@@ -78,6 +78,8 @@ export interface Empresa {
   createdAt: string
 }
 
+export type StatusProfissional = 'ativo' | 'desligado' | 'saiu_da_empresa' | 'falecido'
+
 export interface Profissional {
   id: number
   empresaId: number
@@ -87,7 +89,7 @@ export interface Profissional {
   telefone: string
   linkedin?: string
   parentId?: number
-  ativo: boolean
+  status: StatusProfissional
 }
 
 export interface Interacao {

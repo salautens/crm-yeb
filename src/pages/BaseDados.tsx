@@ -5,6 +5,8 @@ import { empresas } from '../data/empresas'
 import { segmentos } from '../data/segmentos'
 import { usuarios } from '../data/usuarios'
 import { profissionais } from '../data/profissionais'
+import { contratos } from '../data/contratos'
+import { produtos } from '../data/produtos'
 import { usePagination } from '../hooks/usePagination'
 import { TablePagination, EmpresaAlvoBadge } from '../components/ui'
 import { Badge } from '../components/ui/Badge'
@@ -71,6 +73,7 @@ export default function BaseDados() {
   const [filterUF, setFilterUF] = useState('')
   const [filterUsuario, setFilterUsuario] = useState('')
   const [filterStatusRel, setFilterStatusRel] = useState('')
+  const [filterProduto, setFilterProduto] = useState('')
   const [filtrosSalvos, setFiltrosSalvos] = useState<FiltroSalvo[]>([
     { id: 1, nome: 'Empresas Alvo Ativas' },
     { id: 2, nome: 'Usinas SP' },
@@ -84,6 +87,16 @@ export default function BaseDados() {
   )
   const [nomeArquivo, setNomeArquivo] = useState('base-yeb')
   const saveState = useOverlayState()
+
+  // mapa empresaId → Set de produtoIds (a partir dos contratos)
+  const produtosPorEmpresa = useMemo(() => {
+    const m = new Map<number, Set<number>>()
+    contratos.forEach((c) => {
+      if (!m.has(c.empresaId)) m.set(c.empresaId, new Set())
+      c.produtos.forEach((pid) => m.get(c.empresaId)!.add(pid))
+    })
+    return m
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -99,17 +112,18 @@ export default function BaseDados() {
       const matchUF = !filterUF || e.uf === filterUF
       const matchUser = !filterUsuario || e.usuarioId === Number(filterUsuario)
       const matchStatusRel = !filterStatusRel || e.statusRelacionamento === filterStatusRel
-      return matchSearch && matchSeg && matchPipe && matchAlvo && matchUF && matchUser && matchStatusRel
+      const matchProduto = !filterProduto || produtosPorEmpresa.get(e.id)?.has(Number(filterProduto)) === true
+      return matchSearch && matchSeg && matchPipe && matchAlvo && matchUF && matchUser && matchStatusRel && matchProduto
     })
-  }, [search, filterSegmento, filterPipeline, filterAlvo, filterUF, filterUsuario, filterStatusRel])
+  }, [search, filterSegmento, filterPipeline, filterAlvo, filterUF, filterUsuario, filterStatusRel, filterProduto, produtosPorEmpresa])
 
   const { page, setPage, totalPages, paginated } = usePagination(filtered, 12)
 
-  const hasFilters = !!(search || filterSegmento || filterPipeline || filterAlvo || filterUF || filterUsuario || filterStatusRel)
+  const hasFilters = !!(search || filterSegmento || filterPipeline || filterAlvo || filterUF || filterUsuario || filterStatusRel || filterProduto)
 
   const handleReset = () => {
     setSearch(''); setFilterSegmento(''); setFilterPipeline('')
-    setFilterAlvo(''); setFilterUF(''); setFilterUsuario(''); setFilterStatusRel('')
+    setFilterAlvo(''); setFilterUF(''); setFilterUsuario(''); setFilterStatusRel(''); setFilterProduto('')
     setSelecionados(new Set())
   }
 
@@ -157,7 +171,7 @@ export default function BaseDados() {
     const cols = COLUNAS.filter((c) => colunasAtivas.has(c.id))
     const headers = cols.map((c) => c.label)
     const rows = lista.map((e) => {
-      const contato = profissionais.find((p) => p.empresaId === e.id && p.ativo)
+      const contato = profissionais.find((p) => p.empresaId === e.id && p.status === 'ativo')
       const val: Record<ColId, string> = {
         razaoSocial:    e.razaoSocial,
         nomeFantasia:   e.nomeFantasia,
@@ -197,6 +211,7 @@ export default function BaseDados() {
               { label: 'Buscar', el: <input style={inputStyle} placeholder="Nome ou CNPJ..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} /> },
               { label: 'Segmento', el: <select style={inputStyle} value={filterSegmento} onChange={(e) => { setFilterSegmento(e.target.value); setPage(1) }}><option value="">Todos</option><option value="none">⚠ Sem segmento</option>{segmentos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select> },
               { label: 'Relacionamento', el: <select style={{ ...inputStyle, borderColor: filterStatusRel ? 'var(--color-brand-primary)' : 'var(--color-border)' }} value={filterStatusRel} onChange={(e) => { setFilterStatusRel(e.target.value); setPage(1) }}><option value="">Todos</option>{Object.entries(statusRelMap).filter(([k]) => k !== 'nao_definido').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select> },
+              { label: 'Produto Contratado', el: <select style={{ ...inputStyle, borderColor: filterProduto ? 'var(--color-brand-primary)' : 'var(--color-border)' }} value={filterProduto} onChange={(e) => { setFilterProduto(e.target.value); setPage(1) }}><option value="">Todos</option>{produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select> },
               { label: 'Pipeline', el: <select style={inputStyle} value={filterPipeline} onChange={(e) => { setFilterPipeline(e.target.value); setPage(1) }}><option value="">Todos</option>{Object.entries(pipelineMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select> },
               { label: 'Empresa Alvo', el: <select style={inputStyle} value={filterAlvo} onChange={(e) => { setFilterAlvo(e.target.value); setPage(1) }}><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select> },
               { label: 'UF', el: <select style={inputStyle} value={filterUF} onChange={(e) => { setFilterUF(e.target.value); setPage(1) }}><option value="">Todos</option>{UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select> },

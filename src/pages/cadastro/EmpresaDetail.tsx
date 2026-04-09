@@ -10,7 +10,7 @@ import { getContratosByEmpresa, addContrato, getNextNumero } from '../../data/co
 import { getProduto, produtos } from '../../data/produtos'
 import { Badge } from '../../components/ui/Badge'
 import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge } from '../../components/ui/StatusBadge'
-import type { PipelineStage, TipoInteracao, StatusRelacionamento, Profissional } from '../../types'
+import type { PipelineStage, TipoInteracao, StatusRelacionamento, Profissional, StatusProfissional } from '../../types'
 
 const DESCRICAO_MAX = 5000
 
@@ -38,6 +38,13 @@ function Field({ label, required, children, htmlFor }: { label: string; required
   )
 }
 
+const statusProfMap: Record<StatusProfissional, { label: string; variant: 'active' | 'inactive' | 'danger' | 'neutral' }> = {
+  ativo:            { label: 'Ativo',            variant: 'active'   },
+  desligado:        { label: 'Desligado',         variant: 'inactive' },
+  saiu_da_empresa:  { label: 'Saiu da Empresa',   variant: 'danger'   },
+  falecido:         { label: 'Falecido',          variant: 'neutral'  },
+}
+
 const EMPTY_PROF = {
   nome: '',
   cargo: '',
@@ -45,7 +52,7 @@ const EMPTY_PROF = {
   telefone: '',
   linkedin: '',
   parentId: undefined as number | undefined,
-  ativo: true,
+  status: 'ativo' as StatusProfissional,
 }
 
 const EMPTY_INTERACAO = {
@@ -267,7 +274,7 @@ export default function EmpresaDetail() {
       telefone: novoProfForm.telefone,
       linkedin: novoProfForm.linkedin || undefined,
       parentId: novoProfForm.parentId,
-      ativo: novoProfForm.ativo,
+      status: novoProfForm.status,
     }
     addProfissional(novo)
     setProfissionaisLocal((prev) => [...prev, novo])
@@ -286,7 +293,7 @@ export default function EmpresaDetail() {
       telefone: profEditForm.telefone,
       linkedin: profEditForm.linkedin || undefined,
       parentId: profEditForm.parentId,
-      ativo: profEditForm.ativo,
+      status: profEditForm.status,
     }
     updateProfissional(updated)
     setProfissionaisLocal((prev) => prev.map((p) => p.id === updated.id ? updated : p))
@@ -584,7 +591,7 @@ export default function EmpresaDetail() {
                       </div>
                     </td>
                     <td style={{ padding: '12px' }}>
-                      <Badge variant={p.ativo ? 'active' : 'inactive'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                      <Badge variant={statusProfMap[p.status]?.variant ?? 'neutral'}>{statusProfMap[p.status]?.label ?? p.status}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -934,7 +941,7 @@ export default function EmpresaDetail() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Status:</span>
-                    <Badge variant={profSelecionado.ativo ? 'active' : 'inactive'}>{profSelecionado.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                    <Badge variant={statusProfMap[profSelecionado.status]?.variant ?? 'neutral'}>{statusProfMap[profSelecionado.status]?.label ?? profSelecionado.status}</Badge>
                   </div>
                 </>
               ) : (
@@ -968,9 +975,8 @@ export default function EmpresaDetail() {
                       </select>
                     </Field>
                     <Field label="Status" htmlFor="pe-status">
-                      <select id="pe-status" style={S} value={profEditForm.ativo ? 'ativo' : 'inativo'} onChange={(e) => setProfEditForm((f) => ({ ...f, ativo: e.target.value === 'ativo' }))}>
-                        <option value="ativo">Ativo</option>
-                        <option value="inativo">Inativo</option>
+                      <select id="pe-status" style={S} value={profEditForm.status} onChange={(e) => setProfEditForm((f) => ({ ...f, status: e.target.value as StatusProfissional }))}>
+                        {Object.entries(statusProfMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                       </select>
                     </Field>
                   </div>
@@ -988,7 +994,7 @@ export default function EmpresaDetail() {
               ) : (
                 <>
                   <button onClick={() => { setProfSelecionado(null) }} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Fechar</button>
-                  <Button variant="outline" onPress={() => { setProfEditForm({ nome: profSelecionado.nome, cargo: profSelecionado.cargo, email: profSelecionado.email || '', telefone: profSelecionado.telefone || '', linkedin: profSelecionado.linkedin || '', parentId: profSelecionado.parentId, ativo: profSelecionado.ativo }); setProfModoEdicao(true) }}>Editar</Button>
+                  <Button variant="outline" onPress={() => { setProfEditForm({ nome: profSelecionado.nome, cargo: profSelecionado.cargo, email: profSelecionado.email || '', telefone: profSelecionado.telefone || '', linkedin: profSelecionado.linkedin || '', parentId: profSelecionado.parentId, status: profSelecionado.status }); setProfModoEdicao(true) }}>Editar</Button>
                 </>
               )}
             </div>
@@ -1054,9 +1060,8 @@ export default function EmpresaDetail() {
                       </select>
                     </Field>
                     <Field label="Status" htmlFor="np-status">
-                      <select id="np-status" style={S} value={novoProfForm.ativo ? 'ativo' : 'inativo'} onChange={(e) => setNovoProfForm((f) => ({ ...f, ativo: e.target.value === 'ativo' }))}>
-                        <option value="ativo">Ativo</option>
-                        <option value="inativo">Inativo</option>
+                      <select id="np-status" style={S} value={novoProfForm.status} onChange={(e) => setNovoProfForm((f) => ({ ...f, status: e.target.value as StatusProfissional }))}>
+                        {Object.entries(statusProfMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                       </select>
                     </Field>
                   </div>
