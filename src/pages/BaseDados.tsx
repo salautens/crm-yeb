@@ -56,6 +56,7 @@ export default function BaseDados() {
     { id: 2, nome: 'Usinas SP' },
   ])
   const [nomeFiltro, setNomeFiltro] = useState('')
+  const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
   const saveState = useOverlayState()
 
   const filtered = useMemo(() => {
@@ -83,7 +84,33 @@ export default function BaseDados() {
   const handleReset = () => {
     setSearch(''); setFilterSegmento(''); setFilterPipeline('')
     setFilterAlvo(''); setFilterUF(''); setFilterUsuario(''); setFilterStatusRel('')
+    setSelecionados(new Set())
   }
+
+  const toggleSelecionado = (id: number) => {
+    setSelecionados((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const todaAPaginaSelecionada = paginated.length > 0 && paginated.every((e) => selecionados.has(e.id))
+  const algunsDaPaginaSelecionados = paginated.some((e) => selecionados.has(e.id)) && !todaAPaginaSelecionada
+
+  const togglePagina = () => {
+    setSelecionados((prev) => {
+      const next = new Set(prev)
+      if (todaAPaginaSelecionada) {
+        paginated.forEach((e) => next.delete(e.id))
+      } else {
+        paginated.forEach((e) => next.add(e.id))
+      }
+      return next
+    })
+  }
+
+  const limparSelecao = () => setSelecionados(new Set())
 
   const handleSaveFiltro = () => {
     if (!nomeFiltro.trim()) return
@@ -92,20 +119,29 @@ export default function BaseDados() {
     saveState.close()
   }
 
-  const handleExport = () => {
-    const headers = ['CNPJ', 'Razão Social', 'Nome Fantasia', 'Segmento', 'Pipeline', 'Alvo', 'Cidade', 'UF']
-    const rows = filtered.map((e) => [
+  const buildCsv = (lista: typeof filtered) => {
+    const headers = ['CNPJ', 'Razão Social', 'Nome Fantasia', 'Segmento', 'Pipeline', 'Relacionamento', 'Alvo', 'Cidade', 'UF']
+    const rows = lista.map((e) => [
       e.cnpj, e.razaoSocial, e.nomeFantasia,
       segmentos.find((s) => s.id === e.segmentoId)?.nome ?? '',
       pipelineMap[e.pipeline].label,
+      statusRelMap[e.statusRelacionamento]?.label ?? '',
       e.empresaAlvo ? 'Sim' : 'Não',
       e.cidade ?? '', e.uf ?? '',
     ])
-    const csv = [headers, ...rows].map((r) => r.join(';')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    return [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')
+  }
+
+  const handleExport = (apenasSelecao = false) => {
+    const lista = apenasSelecao && selecionados.size > 0
+      ? filtered.filter((e) => selecionados.has(e.id))
+      : filtered
+    const csv = buildCsv(lista)
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'base-dados-yeb.csv'; a.click()
+    const sufixo = apenasSelecao && selecionados.size > 0 ? `_${selecionados.size}-selecionadas` : `_${lista.length}-empresas`
+    a.href = url; a.download = `base-yeb${sufixo}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 
@@ -158,13 +194,36 @@ export default function BaseDados() {
             <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Base de Dados</h1>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>{filtered.length} empresas encontradas</p>
           </div>
-          <Button variant="outline" onPress={handleExport} style={{ fontSize: 13 }}>↓ Exportar CSV</Button>
+          <Button variant="outline" onPress={() => handleExport(false)} style={{ fontSize: 13 }}>↓ Exportar CSV</Button>
         </div>
+
+        {/* Barra de seleção */}
+        {selecionados.size > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', marginBottom: 10, background: 'rgba(30,74,159,0.06)', border: '1px solid rgba(30,74,159,0.2)', borderRadius: 'var(--radius-md)' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-brand-primary)' }}>
+              {selecionados.size} empresa{selecionados.size > 1 ? 's' : ''} selecionada{selecionados.size > 1 ? 's' : ''}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="ghost" onPress={limparSelecao} style={{ fontSize: 12 }}>Limpar seleção</Button>
+              <Button variant="primary" onPress={() => handleExport(true)} style={{ fontSize: 12 }}>↓ Exportar selecionadas</Button>
+            </div>
+          </div>
+        )}
 
         <div style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <th style={{ padding: '10px 14px', width: 40 }}>
+                  <input
+                    type="checkbox"
+                    ref={(el) => { if (el) el.indeterminate = algunsDaPaginaSelecionados }}
+                    checked={todaAPaginaSelecionada}
+                    onChange={togglePagina}
+                    style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--color-brand-primary)' }}
+                    aria-label="Selecionar toda a página"
+                  />
+                </th>
                 {['Empresa', 'Segmento', 'Localização', 'Pipeline', 'Alvo', 'Responsável'].map((h) => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
@@ -172,18 +231,29 @@ export default function BaseDados() {
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Nenhuma empresa encontrada.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Nenhuma empresa encontrada.</td></tr>
               ) : (
                 paginated.map((empresa) => {
                   const seg = segmentos.find((s) => s.id === empresa.segmentoId)
                   const user = usuarios.find((u) => u.id === empresa.usuarioId)
                   const pipeline = pipelineMap[empresa.pipeline]
+                  const isSelecionada = selecionados.has(empresa.id)
                   return (
-                    <tr key={empresa.id} style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                    <tr key={empresa.id}
+                      style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.15s', background: isSelecionada ? 'rgba(30,74,159,0.04)' : '' }}
                       onClick={() => navigate(`/cadastro/empresa/${empresa.id}`)}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                      onMouseEnter={(e) => { if (!isSelecionada) e.currentTarget.style.background = 'var(--color-bg-muted)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelecionada ? 'rgba(30,74,159,0.04)' : '' }}
                     >
+                      <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelecionada}
+                          onChange={() => toggleSelecionado(empresa.id)}
+                          style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--color-brand-primary)' }}
+                          aria-label={`Selecionar ${empresa.razaoSocial}`}
+                        />
+                      </td>
                       <td style={{ padding: '11px 14px' }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>{empresa.razaoSocial}</div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{empresa.cnpj}</div>
