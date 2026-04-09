@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Modal, useOverlayState } from '@heroui/react'
+import { Button } from '@heroui/react'
 import { getEmpresa, updateEmpresa } from '../../data/empresas'
 import { segmentos } from '../../data/segmentos'
 import { getUsuario, usuarios } from '../../data/usuarios'
@@ -135,7 +135,7 @@ export default function EmpresaDetail() {
     [...getInteracoesByEmpresa(Number(id))].sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime())
   )
   const [formInteracao, setFormInteracao] = useState(EMPTY_INTERACAO)
-  const modalInteracao = useOverlayState()
+  const [modalInteracao, setModalInteracao] = useState(false)
 
   const [copied, setCopied] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -186,10 +186,10 @@ export default function EmpresaDetail() {
   const DRAFT_KEY = `interacao-draft-${Number(id)}`
 
   useEffect(() => {
-    if (modalInteracao.isOpen && formInteracao.titulo) {
+    if (modalInteracao && formInteracao.titulo) {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(formInteracao))
     }
-  }, [formInteracao, modalInteracao.isOpen])
+  }, [formInteracao, modalInteracao])
 
   if (!empresa) {
     return (
@@ -318,6 +318,20 @@ export default function EmpresaDetail() {
       .filter(({ produto }) => !!produto)
   }, [contratosLocal])
 
+  // ESC fecha qualquer modal aberto (excepto Nova Interação — tem rascunho)
+  const handleEsc = useCallback((e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return
+    if (interacaoSelecionada) { setInteracaoSelecionada(null); return }
+    if (profSelecionado) { setProfSelecionado(null); setProfModoEdicao(false); return }
+    if (modalNovoProf) { setModalNovoProf(false); return }
+    if (modalContrato) { setModalContrato(false); return }
+  }, [interacaoSelecionada, profSelecionado, modalNovoProf, modalContrato])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [handleEsc])
+
   const setFI = (field: string, value: unknown) => setFormInteracao((f) => ({ ...f, [field]: value }))
 
   const copyToClipboard = (text: string, key: string) => {
@@ -344,7 +358,7 @@ export default function EmpresaDetail() {
       setFormInteracao(EMPTY_INTERACAO)
       setSaveError(null)
       setDraftRestored(false)
-      modalInteracao.close()
+      setModalInteracao(false)
     } catch {
       setSaveError('Erro ao registrar interação. Seu rascunho foi preservado, tente novamente.')
     }
@@ -622,7 +636,7 @@ export default function EmpresaDetail() {
                 setDraftRestored(false)
               }
               setSaveError(null)
-              modalInteracao.open()
+              setModalInteracao(true)
             }}>
               + Nova Interação
             </Button>
@@ -760,7 +774,7 @@ export default function EmpresaDetail() {
       {modalContrato && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={() => setModalContrato(false)}>
-          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden' }}
+          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}>
 
             {/* Header */}
@@ -874,7 +888,7 @@ export default function EmpresaDetail() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
               <Button variant="ghost" onPress={() => setModalContrato(false)}>Cancelar</Button>
               <div style={{ display: 'flex', gap: 10 }}>
                 {contratoStep > 0 && (
@@ -906,7 +920,7 @@ export default function EmpresaDetail() {
           onClick={() => { setProfSelecionado(null); setProfModoEdicao(false) }}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -985,7 +999,7 @@ export default function EmpresaDetail() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '12px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {profModoEdicao ? (
                 <>
                   <Button variant="ghost" onPress={() => setProfModoEdicao(false)}>Cancelar</Button>
@@ -993,7 +1007,7 @@ export default function EmpresaDetail() {
                 </>
               ) : (
                 <>
-                  <button onClick={() => { setProfSelecionado(null) }} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Fechar</button>
+                  <Button variant="ghost" onPress={() => setProfSelecionado(null)}>Fechar</Button>
                   <Button variant="outline" onPress={() => { setProfEditForm({ nome: profSelecionado.nome, cargo: profSelecionado.cargo, email: profSelecionado.email || '', telefone: profSelecionado.telefone || '', linkedin: profSelecionado.linkedin || '', parentId: profSelecionado.parentId, status: profSelecionado.status }); setProfModoEdicao(true) }}>Editar</Button>
                 </>
               )}
@@ -1009,7 +1023,7 @@ export default function EmpresaDetail() {
           onClick={() => setModalNovoProf(false)}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1070,8 +1084,8 @@ export default function EmpresaDetail() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button onClick={() => setModalNovoProf(false)} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>Cancelar</button>
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Button variant="ghost" onPress={() => setModalNovoProf(false)}>Cancelar</Button>
               <Button variant="primary" isDisabled={!novoProfForm.nome || !novoProfForm.cargo} onPress={handleSaveNovoProfissional}>
                 Cadastrar Profissional
               </Button>
@@ -1087,7 +1101,7 @@ export default function EmpresaDetail() {
           onClick={() => setInteracaoSelecionada(null)}
         >
           <div
-            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.20)', overflow: 'hidden' }}
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 720, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1138,137 +1152,129 @@ export default function EmpresaDetail() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '12px 24px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{tempoRelativo(interacaoSelecionada.dataHora)}</span>
-              <button onClick={() => setInteracaoSelecionada(null)} style={{ padding: '8px 20px', background: 'var(--color-bg-muted)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)' }}>
-                Fechar
-              </button>
+              <Button variant="ghost" onPress={() => setInteracaoSelecionada(null)}>Fechar</Button>
             </div>
           </div>
         </div>
       )}
 
       {/* Modal Nova Interação */}
-      <Modal isOpen={modalInteracao.isOpen} onOpenChange={modalInteracao.setOpen}>
-        <Modal.Backdrop isDismissable={false}>
-          <Modal.Container size="md">
-            <Modal.Dialog>
-              <Modal.Header style={{ padding: '20px 24px 16px' }}>
-                <Modal.Heading style={{ fontSize: 17, fontWeight: 700 }}>Nova Interação</Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
+      {modalInteracao && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div
+            style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Nova Interação</h2>
+              <button onClick={() => setModalInteracao(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', fontSize: 16, lineHeight: 1 }}>✕</button>
+            </div>
 
-              <Modal.Body style={{ padding: '0 24px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {draftRestored && (
-                  <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-brand-primary)', padding: '8px 12px', background: 'rgba(30,74,159,0.06)', borderRadius: 8, border: '1px solid rgba(30,74,159,0.15)' }}>
-                    <span>↩</span>
-                    <span>Rascunho anterior restaurado automaticamente.</span>
-                  </div>
-                )}
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {draftRestored && (
+                <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-brand-primary)', padding: '8px 12px', background: 'rgba(30,74,159,0.06)', borderRadius: 8, border: '1px solid rgba(30,74,159,0.15)' }}>
+                  <span>↩</span>
+                  <span>Rascunho anterior restaurado automaticamente.</span>
+                </div>
+              )}
 
-                {saveError && (
-                  <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-danger)', padding: '8px 12px', background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
-                    <span>⚠</span>
-                    <span>{saveError}</span>
-                  </div>
-                )}
+              {saveError && (
+                <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-danger)', padding: '8px 12px', background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <span>⚠</span>
+                  <span>{saveError}</span>
+                </div>
+              )}
 
-                <Field label="Título" htmlFor="interacao-titulo">
-                  <input id="interacao-titulo" className="yeb-input" style={S} placeholder="Ex: Reunião de apresentação (opcional)" value={formInteracao.titulo} onChange={(e) => setFI('titulo', e.target.value)} autoFocus />
+              <Field label="Título" htmlFor="interacao-titulo">
+                <input id="interacao-titulo" className="yeb-input" style={S} placeholder="Ex: Reunião de apresentação (opcional)" value={formInteracao.titulo} onChange={(e) => setFI('titulo', e.target.value)} autoFocus />
+              </Field>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <Field label="Tipo" required htmlFor="interacao-tipo">
+                  <select id="interacao-tipo" aria-required="true" className="yeb-input" style={S} value={formInteracao.tipo} onChange={(e) => setFI('tipo', e.target.value)}>
+                    {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+                  </select>
                 </Field>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Tipo" required htmlFor="interacao-tipo">
-                    <select id="interacao-tipo" aria-required="true" className="yeb-input" style={S} value={formInteracao.tipo} onChange={(e) => setFI('tipo', e.target.value)}>
-                      {Object.entries(tipoInteracaoMap).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Efetividade" required htmlFor="interacao-efetividade">
-                    <select id="interacao-efetividade" aria-required="true" className="yeb-input" style={S} value={formInteracao.efetividade} onChange={(e) => setFI('efetividade', e.target.value)}>
-                      <option value="efetivo">Efetivo</option>
-                      <option value="nao_efetivo">Não Efetivo</option>
-                    </select>
-                  </Field>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Data e Hora" required htmlFor="interacao-data">
-                    <input id="interacao-data" aria-required="true" className="yeb-input" style={S} type="datetime-local" value={formInteracao.dataHora} onChange={(e) => setFI('dataHora', e.target.value)} />
-                  </Field>
-                  <Field label="Linha Comercial" htmlFor="interacao-linha">
-                    <select id="interacao-linha" className="yeb-input" style={S} value={formInteracao.linhaComercial} onChange={(e) => setFI('linhaComercial', e.target.value)}>
-                      <option value="Vendas">Vendas</option>
-                      <option value="Gestão">Gestão</option>
-                    </select>
-                  </Field>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Produto" htmlFor="interacao-produto">
-                    <select id="interacao-produto" className="yeb-input" style={S} value={formInteracao.produtoId} onChange={(e) => setFI('produtoId', Number(e.target.value))}>
-                      {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Responsável" htmlFor="interacao-responsavel">
-                    <select id="interacao-responsavel" className="yeb-input" style={S} value={formInteracao.usuarioId} onChange={(e) => setFI('usuarioId', Number(e.target.value))}>
-                      {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                    </select>
-                  </Field>
-                </div>
-
-                <Field label="Descrição" htmlFor="interacao-descricao">
-                  <textarea
-                    id="interacao-descricao"
-                    className="yeb-input"
-                    style={{ ...S, resize: 'none', minHeight: 80, maxHeight: 400, overflowY: 'auto' }}
-                    placeholder="Descreva o que aconteceu nessa interação…"
-                    value={formInteracao.descricao}
-                    maxLength={DESCRICAO_MAX}
-                    onChange={(e) => {
-                      setFI('descricao', e.target.value)
-                      const el = e.target
-                      el.style.height = 'auto'
-                      el.style.height = Math.min(el.scrollHeight, 400) + 'px'
-                    }}
-                  />
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    fontSize: 11,
-                    marginTop: 4,
-                    color: formInteracao.descricao.length > DESCRICAO_MAX * 0.9
-                      ? 'var(--color-danger)'
-                      : 'var(--color-text-muted)'
-                  }}>
-                    {formInteracao.descricao.length}/{DESCRICAO_MAX}
-                  </div>
+                <Field label="Efetividade" required htmlFor="interacao-efetividade">
+                  <select id="interacao-efetividade" aria-required="true" className="yeb-input" style={S} value={formInteracao.efetividade} onChange={(e) => setFI('efetividade', e.target.value)}>
+                    <option value="efetivo">Efetivo</option>
+                    <option value="nao_efetivo">Não Efetivo</option>
+                  </select>
                 </Field>
+              </div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
-                  <input type="checkbox" checked={formInteracao.isLead} onChange={(e) => setFI('isLead', e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)' }} />
-                  Marcar como Lead
-                </label>
-              </Modal.Body>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <Field label="Data e Hora" required htmlFor="interacao-data">
+                  <input id="interacao-data" aria-required="true" className="yeb-input" style={S} type="datetime-local" value={formInteracao.dataHora} onChange={(e) => setFI('dataHora', e.target.value)} />
+                </Field>
+                <Field label="Linha Comercial" htmlFor="interacao-linha">
+                  <select id="interacao-linha" className="yeb-input" style={S} value={formInteracao.linhaComercial} onChange={(e) => setFI('linhaComercial', e.target.value)}>
+                    <option value="Vendas">Vendas</option>
+                    <option value="Gestão">Gestão</option>
+                  </select>
+                </Field>
+              </div>
 
-              <Modal.Footer style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                {formInteracao.titulo ? (
-                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                    💾 Rascunho salvo
-                  </span>
-                ) : (
-                  <span />
-                )}
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Button variant="ghost" onPress={modalInteracao.close}>Cancelar</Button>
-                  <Button variant="primary" onPress={handleSaveInteracao} isDisabled={!formInteracao.dataHora}>
-                    Registrar Interação
-                  </Button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <Field label="Produto" htmlFor="interacao-produto">
+                  <select id="interacao-produto" className="yeb-input" style={S} value={formInteracao.produtoId} onChange={(e) => setFI('produtoId', Number(e.target.value))}>
+                    {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                </Field>
+                <Field label="Responsável" htmlFor="interacao-responsavel">
+                  <select id="interacao-responsavel" className="yeb-input" style={S} value={formInteracao.usuarioId} onChange={(e) => setFI('usuarioId', Number(e.target.value))}>
+                    {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Descrição" htmlFor="interacao-descricao">
+                <textarea
+                  id="interacao-descricao"
+                  className="yeb-input"
+                  style={{ ...S, resize: 'none', minHeight: 80, maxHeight: 400, overflowY: 'auto' }}
+                  placeholder="Descreva o que aconteceu nessa interação…"
+                  value={formInteracao.descricao}
+                  maxLength={DESCRICAO_MAX}
+                  onChange={(e) => {
+                    setFI('descricao', e.target.value)
+                    const el = e.target
+                    el.style.height = 'auto'
+                    el.style.height = Math.min(el.scrollHeight, 400) + 'px'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, marginTop: 4, color: formInteracao.descricao.length > DESCRICAO_MAX * 0.9 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                  {formInteracao.descricao.length}/{DESCRICAO_MAX}
                 </div>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+              </Field>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, color: 'var(--color-text-secondary)', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                <input type="checkbox" checked={formInteracao.isLead} onChange={(e) => setFI('isLead', e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)' }} />
+                Marcar como Lead
+              </label>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              {formInteracao.titulo ? (
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>💾 Rascunho salvo</span>
+              ) : (
+                <span />
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Button variant="ghost" onPress={() => setModalInteracao(false)}>Cancelar</Button>
+                <Button variant="primary" onPress={handleSaveInteracao} isDisabled={!formInteracao.dataHora}>
+                  Registrar Interação
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
