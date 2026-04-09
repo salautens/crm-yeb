@@ -329,7 +329,7 @@ export default function EmpresaList() {
                     <td style={{ padding: '11px 16px' }}>
                       <Dropdown>
                         <Dropdown.Trigger>
-                          <Button variant="ghost" aria-label="Abrir menu de opções" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>⋯</Button>
+                          <span aria-label="Abrir menu de opções" style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', fontSize: 18, lineHeight: 1, cursor: 'pointer', color: 'var(--color-text-muted)', borderRadius: 6 }}>⋯</span>
                         </Dropdown.Trigger>
                         <Dropdown.Popover>
                           <Dropdown.Menu style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minWidth: 220, padding: 8 }}>
