@@ -7,7 +7,7 @@ import { usuarios } from '../data/usuarios'
 import { usePagination } from '../hooks/usePagination'
 import { TablePagination, EmpresaAlvoBadge } from '../components/ui'
 import { Badge } from '../components/ui/Badge'
-import type { PipelineStage, FiltroSalvo } from '../types'
+import type { PipelineStage, FiltroSalvo, StatusRelacionamento } from '../types'
 
 const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
   prospeccao:        { label: 'Prospecção',       variant: 'neutral'   },
@@ -20,6 +20,15 @@ const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | '
 }
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
+
+const statusRelMap: Record<StatusRelacionamento, { label: string; color: string }> = {
+  lead:          { label: 'Lead',          color: '#94A3B8' },
+  prospect:      { label: 'Prospect',      color: '#3B82F6' },
+  cliente_ativo: { label: 'Cliente Ativo', color: '#10B981' },
+  ex_cliente:    { label: 'Ex-Cliente',    color: '#F59E0B' },
+  parceiro:      { label: 'Parceiro',      color: '#8B5CF6' },
+  nao_definido:  { label: 'Não Definido',  color: '#94A3B8' },
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -41,6 +50,7 @@ export default function BaseDados() {
   const [filterAlvo, setFilterAlvo] = useState('')
   const [filterUF, setFilterUF] = useState('')
   const [filterUsuario, setFilterUsuario] = useState('')
+  const [filterStatusRel, setFilterStatusRel] = useState('')
   const [filtrosSalvos, setFiltrosSalvos] = useState<FiltroSalvo[]>([
     { id: 1, nome: 'Empresas Alvo Ativas' },
     { id: 2, nome: 'Usinas SP' },
@@ -52,22 +62,27 @@ export default function BaseDados() {
     const q = search.toLowerCase()
     return empresas.filter((e) => {
       const matchSearch = !q || e.razaoSocial.toLowerCase().includes(q) || e.nomeFantasia.toLowerCase().includes(q) || e.cnpj.includes(q)
-      const matchSeg = !filterSegmento || e.segmentoId === Number(filterSegmento)
+      const matchSeg = !filterSegmento
+        ? true
+        : filterSegmento === 'none'
+          ? !e.segmentoId
+          : e.segmentoId === Number(filterSegmento)
       const matchPipe = !filterPipeline || e.pipeline === filterPipeline
       const matchAlvo = filterAlvo === '' ? true : filterAlvo === 'sim' ? e.empresaAlvo : !e.empresaAlvo
       const matchUF = !filterUF || e.uf === filterUF
       const matchUser = !filterUsuario || e.usuarioId === Number(filterUsuario)
-      return matchSearch && matchSeg && matchPipe && matchAlvo && matchUF && matchUser
+      const matchStatusRel = !filterStatusRel || e.statusRelacionamento === filterStatusRel
+      return matchSearch && matchSeg && matchPipe && matchAlvo && matchUF && matchUser && matchStatusRel
     })
-  }, [search, filterSegmento, filterPipeline, filterAlvo, filterUF, filterUsuario])
+  }, [search, filterSegmento, filterPipeline, filterAlvo, filterUF, filterUsuario, filterStatusRel])
 
   const { page, setPage, totalPages, paginated } = usePagination(filtered, 12)
 
-  const hasFilters = !!(search || filterSegmento || filterPipeline || filterAlvo || filterUF || filterUsuario)
+  const hasFilters = !!(search || filterSegmento || filterPipeline || filterAlvo || filterUF || filterUsuario || filterStatusRel)
 
   const handleReset = () => {
     setSearch(''); setFilterSegmento(''); setFilterPipeline('')
-    setFilterAlvo(''); setFilterUF(''); setFilterUsuario('')
+    setFilterAlvo(''); setFilterUF(''); setFilterUsuario(''); setFilterStatusRel('')
   }
 
   const handleSaveFiltro = () => {
@@ -103,7 +118,8 @@ export default function BaseDados() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
               { label: 'Buscar', el: <input style={inputStyle} placeholder="Nome ou CNPJ..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} /> },
-              { label: 'Segmento', el: <select style={inputStyle} value={filterSegmento} onChange={(e) => { setFilterSegmento(e.target.value); setPage(1) }}><option value="">Todos</option>{segmentos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select> },
+              { label: 'Segmento', el: <select style={inputStyle} value={filterSegmento} onChange={(e) => { setFilterSegmento(e.target.value); setPage(1) }}><option value="">Todos</option><option value="none">⚠ Sem segmento</option>{segmentos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select> },
+              { label: 'Relacionamento', el: <select style={{ ...inputStyle, borderColor: filterStatusRel ? 'var(--color-brand-primary)' : 'var(--color-border)' }} value={filterStatusRel} onChange={(e) => { setFilterStatusRel(e.target.value); setPage(1) }}><option value="">Todos</option>{Object.entries(statusRelMap).filter(([k]) => k !== 'nao_definido').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select> },
               { label: 'Pipeline', el: <select style={inputStyle} value={filterPipeline} onChange={(e) => { setFilterPipeline(e.target.value); setPage(1) }}><option value="">Todos</option>{Object.entries(pipelineMap).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select> },
               { label: 'Empresa Alvo', el: <select style={inputStyle} value={filterAlvo} onChange={(e) => { setFilterAlvo(e.target.value); setPage(1) }}><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select> },
               { label: 'UF', el: <select style={inputStyle} value={filterUF} onChange={(e) => { setFilterUF(e.target.value); setPage(1) }}><option value="">Todos</option>{UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}</select> },
@@ -172,9 +188,26 @@ export default function BaseDados() {
                         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>{empresa.razaoSocial}</div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{empresa.cnpj}</div>
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--color-text-secondary)' }}>{seg?.nome ?? '—'}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 12 }}>
+                        {seg ? (
+                          <span style={{ color: 'var(--color-text-secondary)' }}>{seg.nome}</span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#D97706', background: '#FEF3C7', padding: '2px 8px', borderRadius: 10 }}>
+                            ⚠ Sem segmento
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--color-text-secondary)' }}>{empresa.cidade ? `${empresa.cidade}, ${empresa.uf}` : '—'}</td>
-                      <td style={{ padding: '11px 14px' }}><Badge variant={pipeline.variant}>{pipeline.label}</Badge></td>
+                      <td style={{ padding: '11px 14px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <Badge variant={pipeline.variant}>{pipeline.label}</Badge>
+                          {empresa.statusRelacionamento && empresa.statusRelacionamento !== 'nao_definido' && (
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: `${statusRelMap[empresa.statusRelacionamento]?.color}20`, color: statusRelMap[empresa.statusRelacionamento]?.color, width: 'fit-content' }}>
+                              {statusRelMap[empresa.statusRelacionamento]?.label}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td style={{ padding: '11px 14px' }}><EmpresaAlvoBadge isAlvo={empresa.empresaAlvo} /></td>
                       <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--color-text-secondary)' }}>{user?.nome ?? '—'}</td>
                     </tr>

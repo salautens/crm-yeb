@@ -344,8 +344,17 @@ export default function EmpresaDetail() {
             {empresa.nomeFantasia} · {empresa.cnpj}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ alignItems: 'center' }}>
           <EmpresaAlvoBadge isAlvo={empresa.empresaAlvo} />
+          {empresa.statusRelacionamento && empresa.statusRelacionamento !== 'nao_definido' && (
+            <span style={{
+              fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
+              background: `${statusRelacionamentoMap[empresa.statusRelacionamento]?.color}22`,
+              color: statusRelacionamentoMap[empresa.statusRelacionamento]?.color,
+            }}>
+              {statusRelacionamentoMap[empresa.statusRelacionamento]?.label}
+            </span>
+          )}
           <Badge variant={pipeline.variant}>{pipeline.label}</Badge>
         </div>
       </div>
