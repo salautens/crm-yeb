@@ -34,7 +34,7 @@ export default function Pipeline() {
       </div>
 
       {/* Funnel summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         {empresasByStage.map(({ key, label, color, items }) => (
           <div key={key} style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '12px 16px', borderTop: `3px solid ${color}` }}>
             <div style={{ fontSize: 22, fontWeight: 700, color }}>{items.length}</div>

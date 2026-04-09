@@ -287,7 +287,8 @@ export default function EmpresaList() {
 
       {/* Table */}
       <div style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-wrap">
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
               {['CNPJ', 'Empresa', 'Segmento', 'Tipo', 'Pipeline', 'Relacionamento', 'Alvo', ''].map((h) => (
@@ -398,6 +399,7 @@ export default function EmpresaList() {
             )}
           </tbody>
         </table>
+        </div>
         <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 

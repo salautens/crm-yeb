@@ -547,7 +547,7 @@ export default function Carteira() {
               onDragLeave={() => handleDragLeave(col.key)}
               onDrop={() => handleDrop(col.key)}
               style={{
-                flexShrink: 0, width: 260,
+                flexShrink: 0, width: 232,
                 background: isOver ? `${col.color}18` : 'rgba(0,0,0,0.05)',
                 borderRadius: 14, overflow: 'hidden',
                 border: `2px solid ${isOver ? col.color : 'transparent'}`,
@@ -618,7 +618,7 @@ export default function Carteira() {
             onClick={addColuna}
             title={`${colunas.length}/${MAX_COLUNAS} colunas`}
             style={{
-              flexShrink: 0, width: 240, height: 52,
+              flexShrink: 0, width: 232, height: 52,
               background: 'rgba(0,0,0,0.04)',
               border: '2px dashed rgba(0,0,0,0.13)',
               borderRadius: 14, cursor: 'pointer',

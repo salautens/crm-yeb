@@ -74,7 +74,7 @@ export default function Inicio() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
         {kpis.map((kpi) => (
           <div key={kpi.label} style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-brand-primary)' }}>{kpi.value}</div>
@@ -94,7 +94,8 @@ export default function Inicio() {
               Nenhuma empresa marcada como favorita.
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-wrap">
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {['Empresa', 'Segmento', 'Pipeline', 'Alvo', ''].map((h) => (
@@ -155,6 +156,7 @@ export default function Inicio() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -164,7 +166,7 @@ export default function Inicio() {
         <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 12 }}>
           Atividades da Semana
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
           {atividadesPorDia.map(({ day, items }, i) => {
             const isToday = day.toDateString() === new Date().toDateString()
             return (

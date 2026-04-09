@@ -34,10 +34,10 @@
   --color-danger:  #EF4444;
 
   /* Layout */
-  --header-height:      64px;
+  --header-height:      56px;
   --ticker-height:      32px;
-  --sidebar-expanded:   240px;
-  --sidebar-collapsed:  56px;
+  --sidebar-expanded:   220px;
+  --sidebar-collapsed:  52px;
 
   /* Border Radius */
   --radius-sm:   4px;

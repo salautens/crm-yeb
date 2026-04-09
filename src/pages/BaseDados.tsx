@@ -203,7 +203,7 @@ export default function BaseDados() {
   return (
     <div style={{ display: 'flex', gap: 20 }}>
       {/* Filter sidebar */}
-      <div style={{ width: 220, flexShrink: 0 }}>
+      <div style={{ width: 196, flexShrink: 0 }}>
         <div style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filtros</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -267,7 +267,8 @@ export default function BaseDados() {
         )}
 
         <div style={{ background: 'var(--color-bg-white)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-wrap">
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ padding: '10px 14px', width: 40 }}>
@@ -342,6 +343,7 @@ export default function BaseDados() {
               )}
             </tbody>
           </table>
+          </div>
           <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>

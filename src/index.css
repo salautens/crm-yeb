@@ -85,3 +85,43 @@ body {
   max-width: 900px !important;
   width: 95vw !important;
 }
+
+/* ── Responsive helpers ── */
+
+/* Scrollable table wrapper — use em todas as tabelas */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Kanban horizontal scroll */
+.kanban-wrap {
+  overflow-x: auto;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Cards responsivos */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* Grid 2 colunas que colapsa em tela pequena */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Responsividade geral de texto e espaçamento */
+@media (max-width: 1100px) {
+  .hide-sm { display: none !important; }
+}

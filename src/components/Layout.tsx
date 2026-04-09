@@ -19,7 +19,7 @@ export default function Layout() {
           theme={theme}
           onToggleTheme={toggle}
         />
-        <main id="main-content" className="flex-1 overflow-auto p-6" aria-label="Conteúdo principal">
+        <main id="main-content" className="flex-1 overflow-auto" style={{ padding: '18px 20px' }} aria-label="Conteúdo principal">
           <Outlet />
         </main>
       </div>

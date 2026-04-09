@@ -105,8 +105,8 @@ const TABS = ['Visão Geral', 'Profissionais', 'Interações', 'Contratos']
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div style={{ display: 'flex', gap: 8, fontSize: 14, padding: '6px 0', borderBottom: '1px solid var(--color-border)' }}>
-      <span style={{ width: 160, color: 'var(--color-text-muted)', flexShrink: 0 }}>{label}</span>
-      <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{value || '—'}</span>
+      <span style={{ minWidth: 120, maxWidth: 160, flex: '0 0 auto', color: 'var(--color-text-muted)', fontSize: 13 }}>{label}</span>
+      <span style={{ color: 'var(--color-text-primary)', fontWeight: 500, minWidth: 0, wordBreak: 'break-word' }}>{value || '—'}</span>
     </div>
   )
 }
@@ -416,7 +416,7 @@ export default function EmpresaDetail() {
 
       {/* Tab content */}
       {activeTab === 0 && (
-        <div role="tabpanel" id="tabpanel-0" aria-labelledby="tab-0" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div role="tabpanel" id="tabpanel-0" aria-labelledby="tab-0" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
           {/* Dados Cadastrais */}
           <div style={cardStyle}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -430,7 +430,7 @@ export default function EmpresaDetail() {
             <InfoRow label="Responsável" value={responsavel?.nome} />
             <InfoRow label="Cadastrado em" value={new Date(empresa.createdAt).toLocaleDateString('pt-BR')} />
             <div style={{ display: 'flex', gap: 8, fontSize: 14, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
-              <span style={{ width: 160, color: 'var(--color-text-muted)', flexShrink: 0 }}>Status de Relacionamento</span>
+              <span style={{ minWidth: 120, maxWidth: 160, flex: '0 0 auto', color: 'var(--color-text-muted)', fontSize: 13 }}>Status de Relacionamento</span>
               <select
                 value={statusRel}
                 onChange={(e) => handleUpdateStatusRel(e.target.value as StatusRelacionamento)}
@@ -469,7 +469,7 @@ export default function EmpresaDetail() {
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Resumo Comercial
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
               {[
                 { label: 'Interações', value: interacoesLocal.length },
                 { label: 'Contratos', value: contratos.length },
@@ -536,7 +536,7 @@ export default function EmpresaDetail() {
               Nenhum resultado para "{profBusca}".
             </p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {(['Nome', 'Cargo'] as const).map((h) => {
@@ -596,7 +596,7 @@ export default function EmpresaDetail() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
@@ -722,7 +722,7 @@ export default function EmpresaDetail() {
               Nenhum contrato encontrado.
             </p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {['Nº', 'Status', 'Regularização', 'Produtos', 'Valor Total', 'Valor Mensal', 'Vencimento'].map((h) => (
@@ -751,7 +751,7 @@ export default function EmpresaDetail() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
