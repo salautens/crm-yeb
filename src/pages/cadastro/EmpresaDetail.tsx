@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button, Modal, useOverlayState } from '@heroui/react'
-import { getEmpresa } from '../../data/empresas'
+import { getEmpresa, updateEmpresa } from '../../data/empresas'
 import { segmentos } from '../../data/segmentos'
 import { getUsuario, usuarios } from '../../data/usuarios'
 import { getProfissionaisByEmpresa, addProfissional, updateProfissional, getNextProfId } from '../../data/profissionais'
@@ -119,6 +119,10 @@ export default function EmpresaDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState(0)
+
+  const [statusRel, setStatusRel] = useState<StatusRelacionamento>(
+    () => getEmpresa(Number(id))?.statusRelacionamento ?? 'nao_definido'
+  )
 
   const [interacoesLocal, setInteracoesLocal] = useState(() =>
     [...getInteracoesByEmpresa(Number(id))].sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime())
@@ -290,6 +294,23 @@ export default function EmpresaDetail() {
     setProfModoEdicao(false)
   }
 
+  const handleUpdateStatusRel = (newStatus: StatusRelacionamento) => {
+    updateEmpresa(empresa!.id, { statusRelacionamento: newStatus })
+    setStatusRel(newStatus)
+  }
+
+  const produtosAtivos = useMemo(() => {
+    const seen = new Map<number, string>()
+    contratosLocal.forEach((c) => {
+      c.produtos.forEach((pid) => {
+        if (!seen.has(pid)) seen.set(pid, c.status)
+      })
+    })
+    return [...seen.entries()]
+      .map(([pid, status]) => ({ produto: getProduto(pid), status }))
+      .filter(({ produto }) => !!produto)
+  }, [contratosLocal])
+
   const setFI = (field: string, value: unknown) => setFormInteracao((f) => ({ ...f, [field]: value }))
 
   const copyToClipboard = (text: string, key: string) => {
@@ -346,13 +367,13 @@ export default function EmpresaDetail() {
         </div>
         <div className="flex gap-2" style={{ alignItems: 'center' }}>
           <EmpresaAlvoBadge isAlvo={empresa.empresaAlvo} />
-          {empresa.statusRelacionamento && empresa.statusRelacionamento !== 'nao_definido' && (
+          {statusRel !== 'nao_definido' && (
             <span style={{
               fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
-              background: `${statusRelacionamentoMap[empresa.statusRelacionamento]?.color}22`,
-              color: statusRelacionamentoMap[empresa.statusRelacionamento]?.color,
+              background: `${statusRelacionamentoMap[statusRel]?.color}22`,
+              color: statusRelacionamentoMap[statusRel]?.color,
             }}>
-              {statusRelacionamentoMap[empresa.statusRelacionamento]?.label}
+              {statusRelacionamentoMap[statusRel]?.label}
             </span>
           )}
           <Badge variant={pipeline.variant}>{pipeline.label}</Badge>
@@ -403,13 +424,23 @@ export default function EmpresaDetail() {
             <InfoRow label="Cadastrado em" value={new Date(empresa.createdAt).toLocaleDateString('pt-BR')} />
             <div style={{ display: 'flex', gap: 8, fontSize: 14, padding: '6px 0', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
               <span style={{ width: 160, color: 'var(--color-text-muted)', flexShrink: 0 }}>Status de Relacionamento</span>
-              <span style={{
-                fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 12,
-                background: `${statusRelacionamentoMap[empresa.statusRelacionamento]?.color}22`,
-                color: statusRelacionamentoMap[empresa.statusRelacionamento]?.color,
-              }}>
-                {statusRelacionamentoMap[empresa.statusRelacionamento]?.label ?? '—'}
-              </span>
+              <select
+                value={statusRel}
+                onChange={(e) => handleUpdateStatusRel(e.target.value as StatusRelacionamento)}
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
+                  background: `${statusRelacionamentoMap[statusRel]?.color}22`,
+                  color: statusRelacionamentoMap[statusRel]?.color,
+                  border: `1px solid ${statusRelacionamentoMap[statusRel]?.color}55`,
+                  cursor: 'pointer', outline: 'none', appearance: 'none',
+                  paddingRight: 22, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+                }}
+              >
+                {Object.entries(statusRelacionamentoMap).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -445,6 +476,29 @@ export default function EmpresaDetail() {
               ))}
             </div>
           </div>
+
+          {/* Produtos Contratados */}
+          {produtosAtivos.length > 0 && (
+            <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Produtos Contratados
+              </h3>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {produtosAtivos.map(({ produto, status }) => {
+                  const statusColor = status === 'ativo' ? '#10B981' : status === 'vencendo' ? '#F59E0B' : status === 'vencido' ? '#EF4444' : '#94A3B8'
+                  const statusLabel = status === 'ativo' ? 'Ativo' : status === 'vencendo' ? 'Vencendo' : status === 'vencido' ? 'Vencido' : 'Cancelado'
+                  return (
+                    <div key={produto!.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--color-bg-muted)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{produto!.nome}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 8, background: `${statusColor}20`, color: statusColor }}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
