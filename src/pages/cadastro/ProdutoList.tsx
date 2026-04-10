@@ -1,17 +1,17 @@
 import { useState } from 'react'
-import { Button, Modal, useOverlayState } from '@heroui/react'
+import { Button, useOverlayState } from '@heroui/react'
 import { produtos as initialProdutos } from '../../data/produtos'
 import { PageHeader, ConfirmDialog } from '../../components/ui'
 import type { Produto } from '../../types'
 
 const CATEGORIAS = ['Soluções', 'Plataforma de Inteligência de Mercado']
 
-const inputStyle: React.CSSProperties = {
+const S: React.CSSProperties = {
   width: '100%',
-  padding: '8px 12px',
+  padding: '9px 12px',
   fontSize: 14,
   border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
+  borderRadius: 8,
   background: 'var(--color-bg-white)',
   color: 'var(--color-text-primary)',
   outline: 'none',
@@ -22,7 +22,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
   color: 'var(--color-text-secondary)',
-  marginBottom: 4,
+  marginBottom: 6,
   display: 'block',
 }
 
@@ -34,20 +34,20 @@ export default function ProdutoList() {
   const [editing, setEditing] = useState<Produto | null>(null)
   const [selected, setSelected] = useState<Produto | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
-  const modalState = useOverlayState()
   const deleteState = useOverlayState()
 
   const handleOpenNew = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
-    modalState.open()
+    setModalOpen(true)
   }
 
   const handleOpenEdit = (produto: Produto) => {
     setEditing(produto)
     setForm({ nome: produto.nome, categoria: produto.categoria })
-    modalState.open()
+    setModalOpen(true)
   }
 
   const handleSave = () => {
@@ -56,7 +56,7 @@ export default function ProdutoList() {
     } else {
       setData([...data, { id: Date.now(), ...form }])
     }
-    modalState.close()
+    setModalOpen(false)
   }
 
   const handleDelete = () => {
@@ -117,39 +117,45 @@ export default function ProdutoList() {
         </table>
       </div>
 
-      {/* Modal */}
-      <Modal isOpen={modalState.isOpen} onOpenChange={modalState.setOpen}>
-        <Modal.Backdrop>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>{editing ? 'Editar Produto' : 'Novo Produto'}</Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body>
-                <div style={{ display: 'grid', gap: 14 }}>
-                  <div>
-                    <label htmlFor="produto-nome" style={labelStyle}>Nome <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
-                    <input id="produto-nome" aria-required="true" style={inputStyle} value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome do produto" />
-                  </div>
-                  <div>
-                    <label htmlFor="produto-categoria" style={labelStyle}>Categoria <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
-                    <select id="produto-categoria" aria-required="true" style={inputStyle} value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}>
-                      {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="outline" onPress={modalState.close}>Cancelar</Button>
-                <Button variant="primary" onPress={handleSave} isDisabled={!form.nome}>
-                  {editing ? 'Salvar' : 'Cadastrar'}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      {/* Modal Novo / Editar Produto */}
+      {modalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setModalOpen(false)}>
+          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+                {editing ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
+              <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', fontSize: 16, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label htmlFor="produto-nome" style={labelStyle}>Nome <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <input id="produto-nome" aria-required="true" style={S} autoFocus value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome do produto" />
+              </div>
+              <div>
+                <label htmlFor="produto-categoria" style={labelStyle}>Categoria <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <select id="produto-categoria" aria-required="true" style={S} value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}>
+                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <Button variant="ghost" onPress={() => setModalOpen(false)}>Cancelar</Button>
+              <Button variant="primary" onPress={handleSave} isDisabled={!form.nome}>
+                {editing ? 'Salvar' : 'Cadastrar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         state={deleteState}

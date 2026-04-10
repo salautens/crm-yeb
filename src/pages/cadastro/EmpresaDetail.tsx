@@ -796,7 +796,7 @@ export default function EmpresaDetail() {
             </div>
 
             {/* Body */}
-            <div style={{ padding: '24px', minHeight: 200 }}>
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
 
               {/* Step 0 — Produtos */}
               {contratoStep === 0 && (

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Modal, useOverlayState } from '@heroui/react'
+import { Button, useOverlayState } from '@heroui/react'
 import { usuarios as initialUsuarios } from '../../data/usuarios'
 import { PageHeader, ConfirmDialog } from '../../components/ui'
 import { Badge } from '../../components/ui/Badge'
@@ -11,12 +11,12 @@ const PERFIS: { value: UserRole; label: string }[] = [
   { value: 'vendedor', label: 'Vendedor' },
 ]
 
-const inputStyle: React.CSSProperties = {
+const S: React.CSSProperties = {
   width: '100%',
-  padding: '8px 12px',
+  padding: '9px 12px',
   fontSize: 14,
   border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
+  borderRadius: 8,
   background: 'var(--color-bg-white)',
   color: 'var(--color-text-primary)',
   outline: 'none',
@@ -27,7 +27,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
   color: 'var(--color-text-secondary)',
-  marginBottom: 4,
+  marginBottom: 6,
   display: 'block',
 }
 
@@ -39,20 +39,20 @@ export default function UsuarioList() {
   const [editing, setEditing] = useState<Usuario | null>(null)
   const [selected, setSelected] = useState<Usuario | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
-  const modalState = useOverlayState()
   const deleteState = useOverlayState()
 
   const handleOpenNew = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
-    modalState.open()
+    setModalOpen(true)
   }
 
   const handleOpenEdit = (u: Usuario) => {
     setEditing(u)
     setForm({ nome: u.nome, email: u.email, cargo: u.cargo, perfil: u.perfil, ativo: u.ativo })
-    modalState.open()
+    setModalOpen(true)
   }
 
   const handleSave = () => {
@@ -61,7 +61,7 @@ export default function UsuarioList() {
     } else {
       setData([...data, { id: Date.now(), ...form }])
     }
-    modalState.close()
+    setModalOpen(false)
   }
 
   const handleDelete = () => {
@@ -136,59 +136,66 @@ export default function UsuarioList() {
         </table>
       </div>
 
-      <Modal isOpen={modalState.isOpen} onOpenChange={modalState.setOpen}>
-        <Modal.Backdrop>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.Header>
-                <Modal.Heading>{editing ? 'Editar Usuário' : 'Novo Usuário'}</Modal.Heading>
-                <Modal.CloseTrigger />
-              </Modal.Header>
-              <Modal.Body>
-                <div style={{ display: 'grid', gap: 14 }}>
-                  <div>
-                    <label htmlFor="usuario-nome" style={labelStyle}>Nome <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
-                    <input id="usuario-nome" aria-required="true" style={inputStyle} value={form.nome} onChange={(e) => setF('nome', e.target.value)} placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <label htmlFor="usuario-email" style={labelStyle}>E-mail <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
-                    <input id="usuario-email" aria-required="true" autoComplete="email" style={inputStyle} type="email" value={form.email} onChange={(e) => setF('email', e.target.value)} placeholder="email@empresa.com" />
-                  </div>
-                  <div>
-                    <label htmlFor="usuario-cargo" style={labelStyle}>Cargo</label>
-                    <input id="usuario-cargo" style={inputStyle} value={form.cargo} onChange={(e) => setF('cargo', e.target.value)} placeholder="Ex: Consultor Comercial" />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label htmlFor="usuario-perfil" style={labelStyle}>Perfil <span aria-hidden="true">*</span><span className="sr-only">(obrigatório)</span></label>
-                      <select id="usuario-perfil" aria-required="true" style={inputStyle} value={form.perfil} onChange={(e) => setF('perfil', e.target.value as UserRole)}>
-                        {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 8 }}>
-                        <input
-                          type="checkbox"
-                          checked={form.ativo}
-                          onChange={(e) => setF('ativo', e.target.checked)}
-                          style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)' }}
-                        />
-                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Usuário ativo</span>
-                      </label>
-                    </div>
-                  </div>
+      {/* Modal Novo / Editar Usuário */}
+      {modalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setModalOpen(false)}>
+          <div style={{ background: 'var(--color-bg-white)', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+                {editing ? 'Editar Usuário' : 'Novo Usuário'}
+              </h2>
+              <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', fontSize: 16, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label htmlFor="usuario-nome" style={labelStyle}>Nome <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <input id="usuario-nome" aria-required="true" style={S} autoFocus value={form.nome} onChange={(e) => setF('nome', e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div>
+                <label htmlFor="usuario-email" style={labelStyle}>E-mail <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <input id="usuario-email" aria-required="true" autoComplete="email" style={S} type="email" value={form.email} onChange={(e) => setF('email', e.target.value)} placeholder="email@empresa.com" />
+              </div>
+              <div>
+                <label htmlFor="usuario-cargo" style={labelStyle}>Cargo</label>
+                <input id="usuario-cargo" style={S} value={form.cargo} onChange={(e) => setF('cargo', e.target.value)} placeholder="Ex: Consultor Comercial" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <label htmlFor="usuario-perfil" style={labelStyle}>Perfil <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <select id="usuario-perfil" aria-required="true" style={S} value={form.perfil} onChange={(e) => setF('perfil', e.target.value as UserRole)}>
+                    {PERFIS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
                 </div>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="outline" onPress={modalState.close}>Cancelar</Button>
-                <Button variant="primary" onPress={handleSave} isDisabled={!form.nome || !form.email}>
-                  {editing ? 'Salvar' : 'Cadastrar'}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.ativo}
+                      onChange={(e) => setF('ativo', e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: 'var(--color-brand-primary)' }}
+                    />
+                    <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Usuário ativo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <Button variant="ghost" onPress={() => setModalOpen(false)}>Cancelar</Button>
+              <Button variant="primary" onPress={handleSave} isDisabled={!form.nome || !form.email}>
+                {editing ? 'Salvar' : 'Cadastrar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         state={deleteState}
