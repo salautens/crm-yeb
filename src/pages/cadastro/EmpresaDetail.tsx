@@ -9,41 +9,12 @@ import { getInteracoesByEmpresa, addInteracao } from '../../data/interacoes'
 import { getContratosByEmpresa, addContrato, getNextNumero } from '../../data/contratos'
 import { getProduto, produtos } from '../../data/produtos'
 import { Badge } from '../../components/ui/Badge'
-import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge } from '../../components/ui/StatusBadge'
-import type { PipelineStage, TipoInteracao, StatusRelacionamento, Profissional, StatusProfissional } from '../../types'
+import { ContractStatusBadge, RegularizacaoBadge, EmpresaAlvoBadge, Field } from '../../components/ui'
+import type { TipoInteracao, Profissional, StatusRelacionamento, StatusProfissional } from '../../types'
+import { pipelineMap, statusRelMap, statusProfMap, tipoInteracaoMap } from '../../constants/maps'
+import { inputStyle as S } from '../../constants/styles'
 
 const DESCRICAO_MAX = 5000
-
-const S: React.CSSProperties = {
-  width: '100%', padding: '9px 12px', fontSize: 14,
-  border: '1px solid var(--color-border)', borderRadius: 8,
-  background: 'var(--color-bg-white)', color: 'var(--color-text-primary)',
-  boxSizing: 'border-box',
-}
-
-function Field({ label, required, children, htmlFor }: { label: string; required?: boolean; children: React.ReactNode; htmlFor?: string }) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', gap: 3, cursor: 'pointer' }}>
-        {label}
-        {required && (
-          <>
-            <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>*</span>
-            <span className="sr-only">(obrigatório)</span>
-          </>
-        )}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const statusProfMap: Record<StatusProfissional, { label: string; variant: 'active' | 'inactive' | 'danger' | 'neutral' }> = {
-  ativo:            { label: 'Ativo',            variant: 'active'   },
-  desligado:        { label: 'Desligado',         variant: 'inactive' },
-  saiu_da_empresa:  { label: 'Saiu da Empresa',   variant: 'danger'   },
-  falecido:         { label: 'Falecido',          variant: 'neutral'  },
-}
 
 const EMPTY_PROF = {
   nome: '',
@@ -67,38 +38,6 @@ const EMPTY_INTERACAO = {
   dataHora: new Date().toISOString().slice(0, 16),
 }
 
-const pipelineMap: Record<PipelineStage, { label: string; variant: 'neutral' | 'brand' | 'pending' | 'active' | 'danger' | 'inactive' }> = {
-  prospeccao:       { label: 'Prospecção',       variant: 'neutral'   },
-  qualificacao:     { label: 'Qualificação',      variant: 'brand'     },
-  proposta_enviada: { label: 'Proposta Enviada',  variant: 'pending'   },
-  em_negociacao:    { label: 'Em Negociação',     variant: 'pending'   },
-  proposta_aceita:  { label: 'Proposta Aceita',   variant: 'active'    },
-  proposta_recusada:{ label: 'Proposta Recusada', variant: 'danger'    },
-  fechado:          { label: 'Fechado',           variant: 'inactive'  },
-}
-
-const tipoInteracaoMap: Record<TipoInteracao, { label: string; icon: string }> = {
-  reuniao_presencial:    { label: 'Reunião Presencial',     icon: '🤝' },
-  videoconferencia:      { label: 'Videoconferência',        icon: '📹' },
-  ligacao:               { label: 'Ligação',                 icon: '📞' },
-  email:                 { label: 'E-mail',                  icon: '✉️'  },
-  whatsapp:              { label: 'WhatsApp',                icon: '💬' },
-  qualificacao_bd:       { label: 'Qualificação BD',         icon: '🔍' },
-  tentativa_agendamento: { label: 'Tentativa de Agendamento',icon: '📅' },
-  proposta_enviada:      { label: 'Proposta Enviada',        icon: '📄' },
-  reuniao:               { label: 'Reunião',                 icon: '📋' },
-  fechamento:            { label: 'Fechamento',              icon: '✅' },
-  outro:                 { label: 'Outro',                   icon: '•'  },
-}
-
-const statusRelacionamentoMap: Record<StatusRelacionamento, { label: string; color: string }> = {
-  lead:          { label: 'Lead',          color: '#94A3B8' },
-  prospect:      { label: 'Prospect',      color: '#3B82F6' },
-  cliente_ativo: { label: 'Cliente Ativo', color: '#10B981' },
-  ex_cliente:    { label: 'Ex-Cliente',    color: '#F59E0B' },
-  parceiro:      { label: 'Parceiro',      color: '#8B5CF6' },
-  nao_definido:  { label: 'Não Definido',  color: '#94A3B8' },
-}
 
 const TABS = ['Visão Geral', 'Profissionais', 'Interações', 'Contratos']
 
@@ -158,6 +97,7 @@ export default function EmpresaDetail() {
 
   // Interação selecionada para leitura
   const [interacaoSelecionada, setInteracaoSelecionada] = useState<typeof interacoesLocal[0] | null>(null)
+  const [interacoesExpandidas, setInteracoesExpandidas] = useState<Set<number>>(new Set())
 
   // Contratos
   const [contratosLocal, setContratosLocal] = useState(() => getContratosByEmpresa(Number(id)))
@@ -391,10 +331,10 @@ export default function EmpresaDetail() {
           {statusRel !== 'nao_definido' && (
             <span style={{
               fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
-              background: `${statusRelacionamentoMap[statusRel]?.color}22`,
-              color: statusRelacionamentoMap[statusRel]?.color,
+              background: `${statusRelMap[statusRel]?.color}22`,
+              color: statusRelMap[statusRel]?.color,
             }}>
-              {statusRelacionamentoMap[statusRel]?.label}
+              {statusRelMap[statusRel]?.label}
             </span>
           )}
           <Badge variant={pipeline.variant}>{pipeline.label}</Badge>
@@ -450,15 +390,15 @@ export default function EmpresaDetail() {
                 onChange={(e) => handleUpdateStatusRel(e.target.value as StatusRelacionamento)}
                 style={{
                   fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
-                  background: `${statusRelacionamentoMap[statusRel]?.color}22`,
-                  color: statusRelacionamentoMap[statusRel]?.color,
-                  border: `1px solid ${statusRelacionamentoMap[statusRel]?.color}55`,
+                  background: `${statusRelMap[statusRel]?.color}22`,
+                  color: statusRelMap[statusRel]?.color,
+                  border: `1px solid ${statusRelMap[statusRel]?.color}55`,
                   cursor: 'pointer', outline: 'none', appearance: 'none',
                   paddingRight: 22, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
                   backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
                 }}
               >
-                {Object.entries(statusRelacionamentoMap).map(([k, v]) => (
+                {Object.entries(statusRelMap).map(([k, v]) => (
                   <option key={k} value={k}>{v.label}</option>
                 ))}
               </select>
@@ -708,9 +648,55 @@ export default function EmpresaDetail() {
                       {interacao.isLead && <Badge variant="brand">Lead</Badge>}
                     </div>
                   </div>
-                  {interacao.descricao && (
-                    <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{interacao.descricao}</p>
-                  )}
+                  {interacao.descricao && (() => {
+                    const expandido = interacoesExpandidas.has(interacao.id)
+                    return (
+                      <div style={{ marginTop: 8 }}>
+                        <p style={{
+                          fontSize: 13,
+                          color: 'var(--color-text-secondary)',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.6,
+                          overflowWrap: 'break-word',
+                          wordBreak: 'break-word',
+                          margin: 0,
+                          ...(!expandido ? {
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          } : {}),
+                        }}>{interacao.descricao}</p>
+                        {(expandido || interacao.descricao.length > 200 || (interacao.descricao.match(/\n/g) ?? []).length > 2) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setInteracoesExpandidas(prev => {
+                                const next = new Set(prev)
+                                if (expandido) next.delete(interacao.id)
+                                else next.add(interacao.id)
+                                return next
+                              })
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              marginTop: 4,
+                              fontSize: 12,
+                              color: 'var(--color-brand-primary)',
+                              cursor: 'pointer',
+                              fontWeight: 400,
+                              textDecoration: 'underline',
+                              textUnderlineOffset: 2,
+                            }}
+                          >
+                            {expandido ? 'ver menos' : 'ver mais'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
                   <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>
                     {interacao.linhaComercial} · {getProduto(interacao.produtoId)?.nome}
                   </div>
@@ -1144,7 +1130,7 @@ export default function EmpresaDetail() {
               {interacaoSelecionada.descricao ? (
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Descrição</div>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.7, margin: 0 }}>{interacaoSelecionada.descricao}</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.7, margin: 0, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{interacaoSelecionada.descricao}</p>
                 </div>
               ) : (
                 <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Sem descrição registrada.</p>
