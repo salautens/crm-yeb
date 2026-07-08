@@ -1,9 +1,9 @@
 import { Button, SearchField, Select, ListBox } from '@heroui/react'
 import {
-  ArrowRightStartOnRectangleIcon,
   Bars3Icon,
   SunIcon,
   MoonIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline'
 
 const filterOptions = [
@@ -119,9 +119,25 @@ export default function Topbar({ onToggleSidebar, theme, onToggleTheme }: Topbar
         )}
       </button>
 
+      {/* Profile */}
+      <button
+        style={{
+          color: 'var(--color-text-muted)',
+          borderRadius: 'var(--radius-md)',
+          padding: '6px',
+          background: 'transparent',
+          border: '1px solid var(--color-border)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+        title="Perfil do Usuário"
+      >
+        <UserCircleIcon className="w-4 h-4" />
+      </button>
+
       {/* Logout */}
       <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-secondary)' }}>
-        <ArrowRightStartOnRectangleIcon className="w-4 h-4 mr-1.5" />
         Sair
       </Button>
     </header>
