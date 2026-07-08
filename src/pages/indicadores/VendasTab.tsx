@@ -4,6 +4,7 @@ interface ChartDataPoint {
   label: string
   agendamentos: number
   reunioes: number
+  contatadas: number
 }
 
 // Mock de dados para os quick filters
@@ -20,11 +21,11 @@ const filterData = {
     avanco: 1,
     avancoChange: '0.0%',
     chart: [
-      { label: 'Seg', agendamentos: 1, reunioes: 0 },
-      { label: 'Ter', agendamentos: 0, reunioes: 1 },
-      { label: 'Qua', agendamentos: 1, reunioes: 0 },
-      { label: 'Qui', agendamentos: 0, reunioes: 0 },
-      { label: 'Sex', agendamentos: 1, reunioes: 1 },
+      { label: 'Seg', agendamentos: 1, reunioes: 0, contatadas: 2 },
+      { label: 'Ter', agendamentos: 0, reunioes: 1, contatadas: 1 },
+      { label: 'Qua', agendamentos: 1, reunioes: 0, contatadas: 1 },
+      { label: 'Qui', agendamentos: 0, reunioes: 0, contatadas: 0 },
+      { label: 'Sex', agendamentos: 1, reunioes: 1, contatadas: 0 },
     ]
   },
   'Este mês': {
@@ -39,10 +40,10 @@ const filterData = {
     avanco: 3,
     avancoChange: '+5.0%',
     chart: [
-      { label: 'Sem 1', agendamentos: 2, reunioes: 1 },
-      { label: 'Sem 2', agendamentos: 3, reunioes: 2 },
-      { label: 'Sem 3', agendamentos: 1, reunioes: 1 },
-      { label: 'Sem 4', agendamentos: 2, reunioes: 2 },
+      { label: 'Sem 1', agendamentos: 2, reunioes: 1, contatadas: 3 },
+      { label: 'Sem 2', agendamentos: 3, reunioes: 2, contatadas: 4 },
+      { label: 'Sem 3', agendamentos: 1, reunioes: 1, contatadas: 1 },
+      { label: 'Sem 4', agendamentos: 2, reunioes: 2, contatadas: 2 },
     ]
   },
   'Último trimestre': {
@@ -57,9 +58,9 @@ const filterData = {
     avanco: 8,
     avancoChange: '+2.0%',
     chart: [
-      { label: 'Abr', agendamentos: 7, reunioes: 5 },
-      { label: 'Mai', agendamentos: 9, reunioes: 8 },
-      { label: 'Jun', agendamentos: 8, reunioes: 6 },
+      { label: 'Abr', agendamentos: 7, reunioes: 5, contatadas: 10 },
+      { label: 'Mai', agendamentos: 9, reunioes: 8, contatadas: 12 },
+      { label: 'Jun', agendamentos: 8, reunioes: 6, contatadas: 10 },
     ]
   },
   'Este ano': {
@@ -74,12 +75,18 @@ const filterData = {
     avanco: 4,
     avancoChange: '0.0%',
     chart: [
-      { label: 'Jan', agendamentos: 2, reunioes: 1 },
-      { label: 'Fev', agendamentos: 1, reunioes: 2 },
-      { label: 'Mar', agendamentos: 3, reunioes: 1 },
-      { label: 'Abr', agendamentos: 2, reunioes: 2 },
-      { label: 'Mai', agendamentos: 4, reunioes: 3 },
-      { label: 'Jun', agendamentos: 0, reunioes: 1 },
+      { label: 'jan. de 26', agendamentos: 1, reunioes: 0, contatadas: 2 },
+      { label: 'fev. de 26', agendamentos: 1, reunioes: 3, contatadas: 4 },
+      { label: 'mar. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'abr. de 26', agendamentos: 7, reunioes: 3, contatadas: 9 },
+      { label: 'mai. de 26', agendamentos: 3, reunioes: 4, contatadas: 5 },
+      { label: 'jun. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'jul. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'ago. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'set. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'out. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'nov. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
+      { label: 'dez. de 26', agendamentos: 1, reunioes: 1, contatadas: 2 },
     ]
   }
 }
@@ -187,8 +194,22 @@ function KpiCardDetailed({
   )
 }
 
-function DualLineChart({ data }: { data: ChartDataPoint[] }) {
-  const maxVal = Math.max(...data.map(d => Math.max(d.agendamentos, d.reunioes)), 5)
+function LineChart({
+  data,
+  showAgendamentos,
+  showReunioes,
+  showContatadas,
+  hoveredIdx,
+  setHoveredIdx
+}: {
+  data: ChartDataPoint[]
+  showAgendamentos: boolean
+  showReunioes: boolean
+  showContatadas: boolean
+  hoveredIdx: number | null
+  setHoveredIdx: (i: number | null) => void
+}) {
+  const maxVal = Math.max(...data.map(d => Math.max(d.agendamentos, d.reunioes, d.contatadas)), 5)
   const height = 180
   const width = 600
   const paddingX = 40
@@ -209,77 +230,198 @@ function DualLineChart({ data }: { data: ChartDataPoint[] }) {
     return { x, y }
   })
 
-  const pathAgendamentos = pointsAgendamentos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const pathReunioes = pointsReunioes.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const pointsContatadas = data.map((d, i) => {
+    const x = paddingX + (i / (data.length - 1)) * chartWidth
+    const y = paddingY + chartHeight - (d.contatadas / maxVal) * chartHeight
+    return { x, y }
+  })
 
-  const areaAgendamentos = `${pathAgendamentos} L ${pointsAgendamentos[pointsAgendamentos.length - 1].x} ${height - paddingY} L ${pointsAgendamentos[0].x} ${height - paddingY} Z`
-  const areaReunioes = `${pathReunioes} L ${pointsReunioes[pointsReunioes.length - 1].x} ${height - paddingY} L ${pointsReunioes[0].x} ${height - paddingY} Z`
+  const getPath = (points: { x: number; y: number }[]) => {
+    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  }
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ position: 'relative', width: '100%', height: height }}>
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-          <defs>
-            <linearGradient id="gradAgendamentos" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-brand-primary)" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="var(--color-brand-primary)" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="gradReunioes" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-success)" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="var(--color-success)" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
+    <div style={{ position: 'relative', width: '100%', height: height }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+        {/* Grid lines */}
+        {Array.from({ length: 5 }).map((_, i) => {
+          const y = paddingY + (i / 4) * chartHeight
+          const val = Math.round(maxVal - (i / 4) * maxVal)
+          return (
+            <g key={i}>
+              <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3 3" />
+              <text x={paddingX - 10} y={y + 4} fill="var(--color-text-muted)" fontSize="10" textAnchor="end">{val}</text>
+            </g>
+          )
+        })}
 
-          {/* Grid lines */}
-          {Array.from({ length: 5 }).map((_, i) => {
-            const y = paddingY + (i / 4) * chartHeight
-            const val = Math.round(maxVal - (i / 4) * maxVal)
+        {/* Lines */}
+        {showAgendamentos && (
+          <path d={getPath(pointsAgendamentos)} fill="none" stroke="var(--color-brand-primary)" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+        {showReunioes && (
+          <path d={getPath(pointsReunioes)} fill="none" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+        {showContatadas && (
+          <path d={getPath(pointsContatadas)} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+
+        {/* Hover Line */}
+        {hoveredIdx !== null && (
+          <line
+            x1={paddingX + (hoveredIdx / (data.length - 1)) * chartWidth}
+            y1={paddingY}
+            x2={paddingX + (hoveredIdx / (data.length - 1)) * chartWidth}
+            y2={height - paddingY}
+            stroke="var(--color-border)"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
+        )}
+
+        {/* Points */}
+        {data.map((_, i) => {
+          const x = paddingX + (i / (data.length - 1)) * chartWidth
+          const isHovered = hoveredIdx === i
+          const r = isHovered ? 6 : 4
+          return (
+            <g key={i}>
+              {showAgendamentos && (
+                <circle cx={x} cy={pointsAgendamentos[i].y} r={r} fill="var(--color-brand-primary)" stroke="var(--color-bg-white)" strokeWidth="1.5" />
+              )}
+              {showReunioes && (
+                <circle cx={x} cy={pointsReunioes[i].y} r={r} fill="var(--color-success)" stroke="var(--color-bg-white)" strokeWidth="1.5" />
+              )}
+              {showContatadas && (
+                <circle cx={x} cy={pointsContatadas[i].y} r={r} fill="#8b5cf6" stroke="var(--color-bg-white)" strokeWidth="1.5" />
+              )}
+            </g>
+          )
+        })}
+
+        {/* X Axis labels */}
+        {data.map((d, i) => {
+          const x = paddingX + (i / (data.length - 1)) * chartWidth
+          return (
+            <text key={i} x={x} y={height - 2} fill="var(--color-text-muted)" fontSize="9" textAnchor="middle">
+              {d.label}
+            </text>
+          )
+        })}
+
+        {/* Interactive Hover Zones */}
+        {data.map((_, i) => {
+          const x = paddingX + (i / (data.length - 1)) * chartWidth
+          return (
+            <rect
+              key={i}
+              x={x - 15}
+              y={paddingY}
+              width="30"
+              height={chartHeight}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              style={{ cursor: 'pointer' }}
+            />
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+function DoughnutChart({ data }: { data: { label: string; percentage: number; color: string }[] }) {
+  const r = 32
+  const circ = 2 * Math.PI * r
+  let accumulated = 0
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ width: 110, height: 110, flexShrink: 0 }}>
+        <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+          {data.map((seg, i) => {
+            const offset = (accumulated / 100) * circ
+            accumulated += seg.percentage
             return (
-              <g key={i}>
-                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3 3" />
-                <text x={paddingX - 10} y={y + 4} fill="var(--color-text-muted)" fontSize="10" textAnchor="end">{val}</text>
-              </g>
+              <circle
+                key={i}
+                cx="50"
+                cy="50"
+                r={r}
+                fill="transparent"
+                stroke={seg.color}
+                strokeWidth="14"
+                strokeDasharray={`${(seg.percentage / 100) * circ} ${circ}`}
+                strokeDashoffset={-offset}
+                style={{ transition: 'all 0.3s ease' }}
+              />
             )
           })}
-
-          {/* Filled Areas */}
-          <path d={areaAgendamentos} fill="url(#gradAgendamentos)" />
-          <path d={areaReunioes} fill="url(#gradReunioes)" />
-
-          {/* Lines */}
-          <path d={pathAgendamentos} fill="none" stroke="var(--color-brand-primary)" strokeWidth="2.5" strokeLinecap="round" />
-          <path d={pathReunioes} fill="none" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" />
-
-          {/* Points */}
-          {pointsAgendamentos.map((p, i) => (
-            <circle key={`a-${i}`} cx={p.x} cy={p.y} r="4" fill="var(--color-brand-primary)" stroke="var(--color-bg-white)" strokeWidth="1.5" />
-          ))}
-          {pointsReunioes.map((p, i) => (
-            <circle key={`r-${i}`} cx={p.x} cy={p.y} r="4" fill="var(--color-success)" stroke="var(--color-bg-white)" strokeWidth="1.5" />
-          ))}
-
-          {/* X Axis labels */}
-          {data.map((d, i) => {
-            const x = paddingX + (i / (data.length - 1)) * chartWidth
-            return (
-              <text key={i} x={x} y={height - 2} fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">
-                {d.label}
-              </text>
-            )
-          })}
+          <circle cx="50" cy="50" r="25" fill="var(--color-bg-white)" />
         </svg>
       </div>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, fontSize: 12, justifyContent: 'center', marginTop: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--color-brand-primary)' }} />
-          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Agendamentos</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--color-success)' }} />
-          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Reuniões Realizadas</span>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+        {data.map((seg, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, overflow: 'hidden' }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color, flexShrink: 0 }} />
+              <span style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seg.label}</span>
+            </div>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', marginLeft: 'auto' }}>{seg.percentage}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FunnelChart({ data }: { data: { label: string; value: number; sub: string; color: string }[] }) {
+  const max = Math.max(...data.map(d => d.value), 1)
+
+  return (
+    <div style={{ display: 'flex', gap: 20, alignItems: 'stretch' }}>
+      {/* Funnel bars */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+        {data.map((item, i) => {
+          const widthPct = Math.max(8, (item.value / max) * 100)
+          return (
+            <div key={i} style={{ height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                style={{
+                  width: `${widthPct}%`,
+                  height: '100%',
+                  background: item.color,
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  transition: 'width 0.3s ease'
+                }}
+              >
+                {item.value}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Funnel labels */}
+      <div style={{ width: 180, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+        {data.map((item, i) => (
+          <div key={i} style={{ height: 26, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontSize: 11 }}>
+            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</div>
+            {item.sub && (
+              <div style={{ fontSize: 9, color: item.sub.startsWith('0%') ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                {item.sub}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -290,6 +432,13 @@ export default function VendasTab() {
   const [startDate, setStartDate] = useState('2026-01-01')
   const [endDate, setEndDate] = useState('2026-12-31')
   const [seller, setSeller] = useState('todos')
+
+  // States para a interatividade do gráfico de evolução
+  const [showAgendamentos, setShowAgendamentos] = useState(true)
+  const [showReunioes, setShowReunioes] = useState(true)
+  const [showContatadas, setShowContatadas] = useState(false)
+  const [hoveredIdxWeekly, setHoveredIdxWeekly] = useState<number | null>(null)
+  const [hoveredIdxEvolucao, setHoveredIdxEvolucao] = useState<number | null>(null)
 
   // Ao mudar quick filter, ajusta as datas
   useEffect(() => {
@@ -324,9 +473,27 @@ export default function VendasTab() {
 
   const chartData = base.chart.map(d => ({
     label: d.label,
-    agendamentos: Math.max(0, Math.round(d.agendamentos * factor * 1.5)),
-    reunioes: Math.max(0, Math.round(d.reunioes * factor * 1.5))
+    agendamentos: Math.max(0, Math.round(d.agendamentos * factor)),
+    reunioes: Math.max(0, Math.round(d.reunioes * factor)),
+    contatadas: Math.max(0, Math.round(d.contatadas * factor))
   }))
+
+  const doughnutData = [
+    { label: 'Tentativa de Agendamento', percentage: 40, color: '#163880' },
+    { label: 'Reunião', percentage: 20, color: '#10B981' },
+    { label: 'Qualificação BD', percentage: 17, color: '#d97706' },
+    { label: 'Proposta Enviada', percentage: 10, color: '#8b5cf6' },
+    { label: 'Reunião Presencial', percentage: 7, color: '#ec4899' },
+    { label: 'Videoconferência', percentage: 7, color: '#06b6d4' }
+  ]
+
+  const funnelData = [
+    { label: 'Empresas Contatadas', value: Math.max(1, Math.round(15 * factor)), sub: '', color: '#163880' },
+    { label: 'Agendamentos', value: Math.max(1, Math.round(10 * factor)), sub: '67% da etapa anterior', color: '#3B82F6' },
+    { label: 'Reuniões Realizadas', value: Math.max(1, Math.round(9 * factor)), sub: '90% da etapa anterior', color: '#10B981' },
+    { label: 'Propostas Enviadas', value: Math.max(1, Math.round(3 * factor)), sub: '33% da etapa anterior', color: '#d97706' },
+    { label: 'Contratos Fechados', value: 0, sub: '0% da etapa anterior', color: '#22C55E' }
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -492,22 +659,235 @@ export default function VendasTab() {
         />
       </div>
 
-      {/* Chart Section */}
-      <div style={{
-        background: 'var(--color-bg-white)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 20,
-        boxShadow: 'var(--shadow-card)',
-      }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Agendamentos e Reuniões por Semana
-        </h3>
-        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 20 }}>
-          Empresas distintas · Indicadores 18 e 19
-        </p>
+      {/* Row 1: Weekly Chart and Type Distribution */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+        {/* Weekly Chart */}
+        <div style={{
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 20,
+          boxShadow: 'var(--shadow-card)',
+          position: 'relative'
+        }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Agendamentos e Reuniões por Semana
+          </h3>
+          <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 20 }}>
+            Empresas distintas · Indicadores 18 e 19
+          </p>
 
-        <DualLineChart data={chartData} />
+          <LineChart
+            data={chartData}
+            showAgendamentos={true}
+            showReunioes={true}
+            showContatadas={false}
+            hoveredIdx={hoveredIdxWeekly}
+            setHoveredIdx={setHoveredIdxWeekly}
+          />
+
+          {/* Legends */}
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, justifyContent: 'center', marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--color-brand-primary)' }} />
+              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Agendamentos (emp. distintas)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: 'var(--color-success)' }} />
+              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Reuniões realizadas (emp. distintas)</span>
+            </div>
+          </div>
+
+          {/* Tooltip */}
+          {hoveredIdxWeekly !== null && (
+            <div style={{
+              position: 'absolute',
+              left: `${50 + (hoveredIdxWeekly / (chartData.length - 1)) * 40}%`,
+              top: '40px',
+              background: 'var(--color-bg-white)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              boxShadow: 'var(--shadow-dropdown)',
+              pointerEvents: 'none',
+              zIndex: 10,
+              fontSize: 11,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>{chartData[hoveredIdxWeekly].label}</div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-brand-primary)' }}>Agendamentos:</span>
+                <span style={{ fontWeight: 600 }}>{chartData[hoveredIdxWeekly].agendamentos}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-success)' }}>Reuniões:</span>
+                <span style={{ fontWeight: 600 }}>{chartData[hoveredIdxWeekly].reunioes}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Type Distribution */}
+        <div style={{
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 20,
+          boxShadow: 'var(--shadow-card)'
+        }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Distribuição por Tipo
+          </h3>
+          <DoughnutChart data={doughnutData} />
+        </div>
+      </div>
+
+      {/* Row 2: Indicators Evolution and Conversion Pipeline */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        {/* Indicators Evolution */}
+        <div style={{
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 20,
+          boxShadow: 'var(--shadow-card)',
+          position: 'relative'
+        }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Evolução de Indicadores
+          </h3>
+
+          {/* Interactive Pills */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            <button
+              onClick={() => setShowAgendamentos(!showAgendamentos)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: `1.5px solid ${showAgendamentos ? 'var(--color-brand-primary)' : 'var(--color-border)'}`,
+                background: showAgendamentos ? 'rgba(45,88,232,0.06)' : 'var(--color-bg-white)',
+                color: showAgendamentos ? 'var(--color-brand-primary)' : 'var(--color-text-secondary)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-brand-primary)' }} />
+              Agendamentos
+            </button>
+
+            <button
+              onClick={() => setShowReunioes(!showReunioes)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: `1.5px solid ${showReunioes ? 'var(--color-success)' : 'var(--color-border)'}`,
+                background: showReunioes ? 'rgba(16,185,129,0.06)' : 'var(--color-bg-white)',
+                color: showReunioes ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-success)' }} />
+              Reuniões Realizadas
+            </button>
+
+            <button
+              onClick={() => setShowContatadas(!showContatadas)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: `1.5px solid ${showContatadas ? '#8b5cf6' : 'var(--color-border)'}`,
+                background: showContatadas ? 'rgba(139,92,246,0.06)' : 'var(--color-bg-white)',
+                color: showContatadas ? '#8b5cf6' : 'var(--color-text-secondary)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6' }} />
+              Empresas Contatadas
+            </button>
+          </div>
+
+          <LineChart
+            data={chartData}
+            showAgendamentos={showAgendamentos}
+            showReunioes={showReunioes}
+            showContatadas={showContatadas}
+            hoveredIdx={hoveredIdxEvolucao}
+            setHoveredIdx={setHoveredIdxEvolucao}
+          />
+
+          {/* Tooltip */}
+          {hoveredIdxEvolucao !== null && (
+            <div style={{
+              position: 'absolute',
+              left: `${15 + (hoveredIdxEvolucao / (chartData.length - 1)) * 60}%`,
+              top: '80px',
+              background: 'var(--color-bg-white)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              boxShadow: 'var(--shadow-dropdown)',
+              pointerEvents: 'none',
+              zIndex: 10,
+              fontSize: 11,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>{chartData[hoveredIdxEvolucao].label}</div>
+              {showAgendamentos && (
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-brand-primary)' }}>Agendamentos:</span>
+                  <span style={{ fontWeight: 600 }}>{chartData[hoveredIdxEvolucao].agendamentos}</span>
+                </div>
+              )}
+              {showReunioes && (
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-success)' }}>Reuniões Realizadas:</span>
+                  <span style={{ fontWeight: 600 }}>{chartData[hoveredIdxEvolucao].reunioes}</span>
+                </div>
+              )}
+              {showContatadas && (
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
+                  <span style={{ color: '#8b5cf6' }}>Empresas Contatadas:</span>
+                  <span style={{ fontWeight: 600 }}>{chartData[hoveredIdxEvolucao].contatadas}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Conversion Pipeline */}
+        <div style={{
+          background: 'var(--color-bg-white)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 20,
+          boxShadow: 'var(--shadow-card)'
+        }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 20, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Pipeline de Conversão
+          </h3>
+          <FunnelChart data={funnelData} />
+        </div>
       </div>
     </div>
   )
