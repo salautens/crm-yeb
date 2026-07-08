@@ -1,14 +1,13 @@
 import { useState, useMemo } from 'react'
 import { Button, Modal, useOverlayState } from '@heroui/react'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, ClockIcon } from '@heroicons/react/24/outline'
-import { atividades as atividadesData, addAtividade } from '../data/atividades'
+import { atividades as atividadesData } from '../data/atividades'
 import { produtos } from '../data/produtos'
 import { usuarios } from '../data/usuarios'
 import type { Prioridade, Atividade, TipoInteracao } from '../types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const DIAS_FULL   = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MESES       = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
 function startOfWeek(date: Date): Date {
@@ -47,15 +46,6 @@ const prioColor: Record<Prioridade, string> = {
   Baixa: '#10B981',
 }
 
-// ─── Form defaults ────────────────────────────────────────────────────────────
-const EMPTY_FORM = {
-  titulo: '',
-  acao: '',
-  prioridade: 'Media' as Prioridade,
-  inicio: '',
-  fim: '',
-  prazo: '',
-}
 
 const DESCRICAO_MAX = 5000
 
@@ -299,10 +289,9 @@ function TrelloColumn({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Agenda() {
   const [weekStart, setWeekStart]       = useState(() => startOfWeek(new Date()))
-  const [localAtividades, setLocalAtividades] = useState(atividadesData)
+  const [localAtividades]               = useState(atividadesData)
   const [done, setDone]                 = useState<Set<number>>(new Set())
   const [filterPrio, setFilterPrio]     = useState<string>('')
-  const [form, setForm]                 = useState(EMPTY_FORM)
   const [interacao, setInteracao]       = useState(EMPTY_INTERACAO)
   const modalState                      = useOverlayState()
   const today                           = new Date()
@@ -352,7 +341,6 @@ export default function Agenda() {
     modalState.close()
   }
 
-  const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const setI = (k: string, v: unknown) => setInteracao((f) => ({ ...f, [k]: v }))
 
   const S: React.CSSProperties = {
